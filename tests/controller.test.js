@@ -133,6 +133,21 @@ export async function run() {
         c.setMenuOpen(false); await flush(); equal(e.calls.at(-1), ['set', 'transparency', '60']);
         await c.stop(); assert(t.tasks.size === 0);
     }
+    // Without panel battery text, nothing polls while the menu is closed.
+    {
+        const t = new Clock(); const e = new FakeExecutor();
+        const c = new HeadsetController({scheduler: t, executor: e, resolve: () => '/mock', pollWhileClosed: false});
+        c.start(); await flush(); e.reply(); await flush();
+        assert(c.ready && t.tasks.size === 0);
+        c.refresh(); await flush(); e.reply({fail: true}); await flush();
+        assert(t.tasks.size === 0, 'Closed-menu backoff poll without battery text');
+        c.setMenuOpen(true); await flush(); e.reply(); await flush(); equal(t.delays(), [30000]);
+        c.setMenuOpen(false); assert(t.tasks.size === 0);
+        const calls = e.calls.length;
+        c.setPollWhileClosed(true); equal(t.delays(), [120000]);
+        assert(e.calls.length === calls && !e.pending, 'Preference change launched a command');
+        await c.stop();
+    }
     // BlueZ link evidence: disconnect stops polling, reconnect reads after settling.
     {
         const {c, scheduler: t, executor: e} = await setup();

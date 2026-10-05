@@ -31,7 +31,7 @@ export default class MomentumPreferences extends ExtensionPreferences {
         const focus = new Gtk.EventControllerFocus();
         focus.connect('leave', () => { if (path.text !== settings.get_string('cli-path')) confirm(); });
         path.add_controller(focus);
-        const battery = new Adw.SwitchRow({title: 'Show battery percentage in the top bar', subtitle: 'Shown only after a valid status read.'});
+        const battery = new Adw.SwitchRow({title: 'Show battery percentage in the top bar', subtitle: 'Shown only after a valid status read. When off, the headset is not polled while the menu is closed.'});
         group.add(battery);
         settings.bind('show-battery-percentage', battery, 'active', Gio.SettingsBindFlags.DEFAULT);
         // No controller, subprocess or headset query exists in this process.

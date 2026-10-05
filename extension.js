@@ -18,6 +18,8 @@ export default class MomentumExtension extends Extension {
         try {
             this.settings = this.getSettings();
             this.settingsSignal = this.settings.connect('changed::cli-path', () => this._replace());
+            this.batterySignal = this.settings.connect('changed::show-battery-percentage',
+                () => this.controller?.setPollWhileClosed(this.settings.get_boolean('show-battery-percentage')));
             this.link = 'unknown';
             this._replace();
             this.bluez = new BluezWatcher(link => {
@@ -50,7 +52,8 @@ export default class MomentumExtension extends Extension {
         const executor = new CliExecutor({logFailure: r => console.warn(
             `Momentum CLI operation ${r.operationId}: exit=${r.exitCode}, signal=${r.signal}, timeout=${r.timedOut}, streamError=${Boolean(r.error)}, elapsed=${Math.round(r.elapsedMs)}ms`)});
         this.controller = new HeadsetController({executor, scheduler, resolve: resolveExecutable,
-            cliPath: this.settings.get_string('cli-path')});
+            cliPath: this.settings.get_string('cli-path'),
+            pollWhileClosed: this.settings.get_boolean('show-battery-percentage')});
         const controller = this.controller;
         controller.link = this.link;
         // UI actions must also wait for an earlier lifecycle's child to exit.
@@ -68,8 +71,10 @@ export default class MomentumExtension extends Extension {
     disable() {
         this.enabled = false;
         this.epoch = (this.epoch ?? 0) + 1;
-        if (this.settingsSignal) this.settings.disconnect(this.settingsSignal);
-        this.settingsSignal = 0;
+        for (const id of [this.settingsSignal, this.batterySignal]) {
+            if (id) this.settings.disconnect(id);
+        }
+        this.settingsSignal = this.batterySignal = 0;
         this.bluez?.stop();
         this.bluez = null;
         this.sleepCancellable?.cancel();

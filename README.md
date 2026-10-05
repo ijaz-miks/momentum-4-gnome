@@ -102,7 +102,8 @@ keyboard, wheel and step changes debounce for 350 ms; closing the menu commits a
 pending preview.
 
 Polling runs after completed transactions: every 30 seconds with the menu open
-and every 120 seconds while closed. Read failures back off to 30, 60, 120 and 300
+and every 120 seconds while closed. Closed-menu polling only keeps the panel
+battery text current, so it is off when that text is hidden in Preferences. Read failures back off to 30, 60, 120 and 300
 seconds. A missing CLI does not poll. Opening the menu and Refresh bypass the
 backoff. logind sleep signals cancel work and waking rereads.
 
