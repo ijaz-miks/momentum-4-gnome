@@ -1,7 +1,13 @@
 #!/usr/bin/bash
-set -eu
+set -eu -o pipefail
 cd -- "$(dirname -- "$0")/.."
 gjs -m tests/run.js
+# The BlueZ watcher test uses a fake org.bluez service on a private session bus.
+if command -v dbus-run-session >/dev/null; then
+    GIO_USE_VFS=local dbus-run-session -- gjs -m tests/run.js bluez 2>&1 | grep -v '^dbus-daemon'
+else
+    echo 'SKIP bluez: dbus-run-session is not installed'
+fi
 glib-compile-schemas --strict --dry-run schemas
 python3 - <<'PY'
 import ast

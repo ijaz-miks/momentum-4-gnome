@@ -133,6 +133,23 @@ export async function run() {
         c.setMenuOpen(false); await flush(); equal(e.calls.at(-1), ['set', 'transparency', '60']);
         await c.stop(); assert(t.tasks.size === 0);
     }
+    // BlueZ link evidence: disconnect stops polling, reconnect reads after settling.
+    {
+        const {c, scheduler: t, executor: e} = await setup();
+        c.setLinkState('connected');
+        equal(t.delays(), [120000]);
+        c.setLinkState('disconnected');
+        assert(!c.ready && c.current.connection === 'unavailable' && t.tasks.size === 0 && !e.pending);
+        await t.tick(600000); assert(!e.pending, 'Polled while BlueZ reports no headset');
+        c.setLinkState('connected'); equal(t.delays(), [1500]);
+        await t.tick(1500); equal(e.calls.at(-1), ['status']); e.reply(); await flush();
+        assert(c.ready); equal(t.delays(), [120000]);
+        // A disconnect during a read lets that read fail by itself, then waits.
+        c.refresh(); await flush(); c.setLinkState('disconnected');
+        e.reply({fail: true}); await flush();
+        assert(!c.ready && t.tasks.size === 0);
+        await c.stop();
+    }
     // Stop during every phase, including pending debounce, and sleep/wake.
     {
         const {c, scheduler: t, executor: e} = await setup();

@@ -106,6 +106,13 @@ and every 120 seconds while closed. Read failures back off to 30, 60, 120 and 30
 seconds. A missing CLI does not poll. Opening the menu and Refresh bypass the
 backoff. logind sleep signals cancel work and waking rereads.
 
+The extension also watches BlueZ on the system bus, read-only, for a connected
+device that offers the GAIA profile `momentumctl` uses. When the headset
+connects, it reads shortly afterwards instead of waiting for the backoff; while
+BlueZ reports it disconnected, values are marked unavailable and no commands
+run until it reconnects. Watching never starts `bluetoothd` and never calls
+BlueZ methods. Without BlueZ on the bus, the polling above applies unchanged.
+
 Serialization covers this extension only. Another program using `momentumctl`
 at the same time can still contend for the headset's Bluetooth profile. A
 successful status means the control interface answered; it is not a Bluetooth
@@ -124,8 +131,10 @@ python3 scripts/shell-test-retained.py builds/<build>/momentum4@ijaz-miks.github
 Use fresh directory names each time; build and test output is retained and
 ignored by Git. `check.sh` runs the parser, command, controller and real
 subprocess tests against `tests/mock-momentumctl.py`, plus schema and static
-checks. The Shell test starts the packaged extension in a private headless
-GNOME Shell with its own XDG directories, D-Bus session and Wayland display, and
+checks. The BlueZ watcher test runs against a fake `org.bluez` service on a
+private bus. The Shell test starts the packaged extension in a private headless
+GNOME Shell with its own XDG directories, D-Bus session (also used as its system
+bus, with a fake BlueZ) and Wayland display, and
 selects the mock CLI explicitly so it cannot reach a real headset. It does not
 use the installed `gnome-shell-test-tool`, which removes its output.
 

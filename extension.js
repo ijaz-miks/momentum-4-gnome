@@ -1,6 +1,7 @@
 import Gio from 'gi://Gio';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {BluezWatcher} from './lib/bluezWatcher.js';
 import {CliExecutor} from './lib/cliExecutor.js';
 import {resolveExecutable} from './lib/executableResolver.js';
 import {HeadsetController} from './lib/headsetController.js';
@@ -17,7 +18,13 @@ export default class MomentumExtension extends Extension {
         try {
             this.settings = this.getSettings();
             this.settingsSignal = this.settings.connect('changed::cli-path', () => this._replace());
+            this.link = 'unknown';
             this._replace();
+            this.bluez = new BluezWatcher(link => {
+                this.link = link;
+                this.controller?.setLinkState(link);
+            });
+            this.bluez.start();
             this.sleepCancellable = new Gio.Cancellable();
             const epoch = this.epoch;
             Gio.bus_get(Gio.BusType.SYSTEM, this.sleepCancellable, (_source, result) => {
@@ -45,6 +52,7 @@ export default class MomentumExtension extends Extension {
         this.controller = new HeadsetController({executor, scheduler, resolve: resolveExecutable,
             cliPath: this.settings.get_string('cli-path')});
         const controller = this.controller;
+        controller.link = this.link;
         // UI actions must also wait for an earlier lifecycle's child to exit.
         controller.paused = true;
         this.indicator = new Indicator(controller, this.settings, () => this.openPreferences());
@@ -62,6 +70,8 @@ export default class MomentumExtension extends Extension {
         this.epoch = (this.epoch ?? 0) + 1;
         if (this.settingsSignal) this.settings.disconnect(this.settingsSignal);
         this.settingsSignal = 0;
+        this.bluez?.stop();
+        this.bluez = null;
         this.sleepCancellable?.cancel();
         this.sleepCancellable = null;
         if (this.sleepSignal) this.sleepConnection.signal_unsubscribe(this.sleepSignal);

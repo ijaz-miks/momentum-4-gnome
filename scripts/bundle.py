@@ -6,7 +6,7 @@ from pathlib import PurePosixPath
 UUID = 'momentum4@ijaz-miks.github.io'
 RUNTIME = {'metadata.json', 'extension.js', 'prefs.js', 'stylesheet.css', 'NOTICE', 'LICENSE',
            'lib/commands.js', 'lib/statusParser.js', 'lib/executableResolver.js',
-           'lib/cliExecutor.js', 'lib/headsetController.js', 'lib/scheduler.js',
+           'lib/cliExecutor.js', 'lib/headsetController.js', 'lib/scheduler.js', 'lib/bluezWatcher.js',
            'ui/indicator.js', 'ui/transparencyRow.js',
            'schemas/org.gnome.shell.extensions.momentumctl.gschema.xml',
            'schemas/gschemas.compiled'}

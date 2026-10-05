@@ -47,7 +47,11 @@ settings = root / 'config/glib-2.0/settings'
 settings.mkdir(parents=True)
 with (settings / 'keyfile').open('x') as stream:
     config.write(stream)
-command = ['dbus-run-session', '--', '/usr/bin/gnome-shell', '--headless', '--no-x11',
+# The private session bus also serves as the system bus, so the test Shell never
+# reaches the host's BlueZ or logind; tests can export fake services on it.
+command = ['dbus-run-session', '--', '/usr/bin/sh', '-c',
+           'DBUS_SYSTEM_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS" exec "$@"', 'shell-test',
+           '/usr/bin/gnome-shell', '--headless', '--no-x11',
            '--virtual-monitor', f'{1280 * args.scale}x{1024 * args.scale}', '--wayland-display', 'momentumctl-test-display',
            '--mode', 'user', '--automation-script', str(source / 'tests/shell-smoke.js')]
 print(f'Retained isolated Shell files: {root}', flush=True)

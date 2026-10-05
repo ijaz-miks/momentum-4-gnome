@@ -55,6 +55,28 @@ async function click(item) {
     item._clickGesture.emit('recognize');
     await sleep(120);
 }
+// Fake BlueZ on the isolated system bus (the harness aliases it to the session bus).
+function fakeBluez() {
+    const xml = `<node><interface name="org.bluez.Device1">
+      <property name="Connected" type="b" access="read"/><property name="UUIDs" type="as" access="read"/>
+    </interface></node>`;
+    const state = {connected: false};
+    const iface = Gio.DBusExportedObject.wrapJSObject(xml, {
+        get Connected() { return state.connected; },
+        get UUIDs() { return ['a2129ff3-081b-4c45-8afe-469d9c4842ec']; },
+    });
+    const object = Gio.DBusObjectSkeleton.new('/org/bluez/hci0/dev_00_00_00_00_00_01');
+    object.add_interface(iface);
+    const server = Gio.DBusObjectManagerServer.new('/');
+    server.export(object);
+    server.set_connection(Gio.DBus.system);
+    Gio.bus_own_name_on_connection(Gio.DBus.system, 'org.bluez', Gio.BusNameOwnerFlags.NONE, null, null);
+    return {setConnected(value) {
+        state.connected = value;
+        iface.emit_property_changed('Connected', GLib.Variant.new_boolean(value));
+    }};
+}
+const statusReads = () => events().filter(e => e.phase === 'start' && e.args[0] === 'status').length;
 async function ready(extension) {
     await until(() => extension.controller?.ready && extension.controller.current.activity === 'idle', 'Controller did not become ready');
 }
@@ -202,6 +224,17 @@ async function execute() {
         GLib.file_set_contents(`${GLib.getenv('MOMENTUMCTL_MOCK_DIR')}/mode`, 'stateful');
         await extension.controller.refresh(); await ready(extension);
         checks.push('Malformed status disables controls, hides panel battery, recovers');
+        assert(extension.controller.link === 'unknown', 'Test Shell reached a real BlueZ');
+        const bluez = fakeBluez();
+        await until(() => extension.controller.link === 'disconnected' && !extension.controller.ready, 'BlueZ disconnect not reflected');
+        assert(ui.detail.label.text.includes('Headset disconnected') && !ui.battery.visible, 'Disconnect not shown');
+        const readsWhileGone = statusReads();
+        extension.controller.setMenuOpen(false); await sleep(500);
+        assert(statusReads() === readsWhileGone, 'Polled while BlueZ reported no headset');
+        bluez.setConnected(true);
+        await until(() => extension.controller.ready && statusReads() > readsWhileGone, 'Reconnect did not trigger a read');
+        await ready(extension);
+        checks.push('BlueZ disconnect shows unavailable without polling; reconnect reads again');
         const beforePrefs = events().length;
         const prefsScript = Gio.File.new_for_uri(import.meta.url).get_parent().get_child('prefs-smoke.js').get_path();
         const prefsProcess = Gio.Subprocess.new(['/usr/bin/gjs', '-m', prefsScript], Gio.SubprocessFlags.NONE);

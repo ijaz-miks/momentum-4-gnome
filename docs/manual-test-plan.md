@@ -24,7 +24,7 @@ headless GNOME Shell with an explicit mock path. It covers all switches,
 anti-wind modes, transparency drag/step/debounce/close commit, virtual keyboard
 navigation, battery preference
 without CLI activity, a path change during a hung child, malformed status and
-recovery, repeated disable/enable, the separate GTK4 preferences process and
+recovery, BlueZ disconnect and reconnect through a fake service, repeated disable/enable, the separate GTK4 preferences process and
 final teardown. The harness fails on JavaScript errors, disposed-actor access
 and Clutter or St criticals in the Shell log even when its JSON report passes.
 
@@ -42,7 +42,8 @@ default 100% light presentation.
    restore them afterwards. Verify all nine fields after each write.
 4. Test every control. Check whether firmware changes related fields, without
    assuming dependencies.
-5. Test headset power-off and reconnect, Bluetooth off, external changes from the
+5. Test headset power-off and reconnect (the menu should refresh shortly after
+   BlueZ reports the connection), Bluetooth off, external changes from the
    mobile app, off/on-head behaviour and suspend/resume. Confirm stale values
    and failures stay visible and queued writes are discarded.
 6. Disable during refresh, write, settle and verification, then re-enable
