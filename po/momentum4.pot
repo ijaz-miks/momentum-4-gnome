@@ -1,0 +1,277 @@
+# Translations for Momentum 4 Controls.
+# This file is distributed under the same license as the project.
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+
+#: prefs.js:13 ui/indicator.js:43 ui/indicator.js:61 ui/indicator.js:62 ui/indicator.js:179
+msgid "Momentum 4 Controls"
+msgstr ""
+
+#: prefs.js:14
+msgid "Extension preferences"
+msgstr ""
+
+#: prefs.js:14
+msgid "Headset settings are read when enabled and are never automatically restored."
+msgstr ""
+
+#: prefs.js:17
+msgid "CLI executable (empty for automatic discovery)"
+msgstr ""
+
+#: prefs.js:20 prefs.js:21 prefs.js:58
+msgid "Choose the momentumctl executable"
+msgstr ""
+
+#: prefs.js:32
+msgid "Selected executable"
+msgstr ""
+
+#: prefs.js:32
+msgid "Automatic discovery found"
+msgstr ""
+
+#: prefs.js:35
+msgid "Selected executable is not usable"
+msgstr ""
+
+#: prefs.js:35
+msgid "Automatic discovery found nothing"
+msgstr ""
+
+#: prefs.js:36
+msgid "Searched PATH, ~/.cargo/bin, ~/.local/bin, /usr/local/bin and /usr/bin."
+msgstr ""
+
+#: prefs.js:47
+msgid "Not applied"
+msgstr ""
+
+#: prefs.js:69
+msgid "Show battery percentage in the top bar"
+msgstr ""
+
+#: prefs.js:69
+msgid "Shown only after a valid status read. When off, the headset is not polled while the menu is closed."
+msgstr ""
+
+#: prefs.js:72
+msgid "Keyboard"
+msgstr ""
+
+#: prefs.js:74
+msgid "Shortcut that opens or closes the menu, for example <Super>m. Leave empty to disable it."
+msgstr ""
+
+#: prefs.js:76
+msgid "Shortcut"
+msgstr ""
+
+#: lib/commands.js:5
+msgid "Noise cancellation"
+msgstr ""
+
+#: lib/commands.js:6
+msgid "Adaptive noise control"
+msgstr ""
+
+#: lib/commands.js:7
+msgid "Transparency"
+msgstr ""
+
+#: lib/commands.js:8
+msgid "Anti-wind"
+msgstr ""
+
+#: lib/commands.js:9
+msgid "Smart Pause"
+msgstr ""
+
+#: lib/commands.js:10
+msgid "On-head detection"
+msgstr ""
+
+#: lib/commands.js:11
+msgid "Auto-answer"
+msgstr ""
+
+#: lib/commands.js:12
+msgid "Comfort Call"
+msgstr ""
+
+#: lib/commands.js:13
+msgid "Battery"
+msgstr ""
+
+#: lib/executableResolver.js:14
+msgid "The selected momentumctl executable cannot be started. Use an absolute executable filename."
+msgstr ""
+
+#: lib/executableResolver.js:24
+msgid "momentumctl was not found. Select its executable in Preferences."
+msgstr ""
+
+#: lib/headsetController.js:15
+msgid "The headset did not respond in time"
+msgstr ""
+
+#: lib/headsetController.js:16
+msgid "Headset unavailable. Connect it in Bluetooth Settings, then refresh."
+msgstr ""
+
+#: lib/headsetController.js:17
+msgid "Could not communicate with the headset"
+msgstr ""
+
+#: lib/headsetController.js:119
+msgid "Headset disconnected. Connect it in Bluetooth Settings."
+msgstr ""
+
+#: lib/headsetController.js:168 lib/headsetController.js:226
+msgid "Could not read headset settings"
+msgstr ""
+
+#: lib/headsetController.js:192 lib/headsetController.js:246
+msgid "Could not update %s"
+msgstr ""
+
+#: lib/headsetController.js:195
+msgid "Could not confirm current headset settings"
+msgstr ""
+
+#: lib/headsetController.js:259
+msgid "Update sent; current headset state could not be confirmed"
+msgstr ""
+
+#: lib/headsetController.js:261
+msgid "%s did not change to the requested value"
+msgstr ""
+
+#: lib/i18n.js:9 lib/i18n.js:9
+msgid "..."
+msgstr ""
+
+#: ui/indicator.js:17
+msgid "Off"
+msgstr ""
+
+#: ui/indicator.js:17
+msgid "Auto"
+msgstr ""
+
+#: ui/indicator.js:17
+msgid "Max"
+msgstr ""
+
+#: ui/indicator.js:63 ui/indicator.js:185 ui/indicator.js:186
+msgid "Checking"
+msgstr ""
+
+#: ui/indicator.js:74
+msgid "Noise control"
+msgstr ""
+
+#: ui/indicator.js:92 ui/indicator.js:202
+msgid "Anti-wind: Unavailable"
+msgstr ""
+
+#: ui/indicator.js:101
+msgid "Behaviour"
+msgstr ""
+
+#: ui/indicator.js:108
+msgid "Dismiss update error"
+msgstr ""
+
+#: ui/indicator.js:112
+msgid "Refresh"
+msgstr ""
+
+#: ui/indicator.js:115
+msgid "Bluetooth Settings"
+msgstr ""
+
+#: ui/indicator.js:118
+msgid "Preferences"
+msgstr ""
+
+#: ui/indicator.js:121
+msgid "Could not open Preferences: %s"
+msgstr ""
+
+#: ui/indicator.js:156
+msgid "Could not open Bluetooth Settings: %s"
+msgstr ""
+
+#: ui/indicator.js:181
+msgid "%s · Battery %s (stale)"
+msgstr ""
+
+#: ui/indicator.js:182
+msgid "%s · Battery %s"
+msgstr ""
+
+#: ui/indicator.js:185
+msgid "Available"
+msgstr ""
+
+#: ui/indicator.js:185 ui/indicator.js:194
+msgid "Unavailable"
+msgstr ""
+
+#: ui/indicator.js:186
+msgid "Updating"
+msgstr ""
+
+#: ui/indicator.js:187
+msgid "Error"
+msgstr ""
+
+#: ui/indicator.js:188
+msgid "%s · Battery low"
+msgstr ""
+
+#: ui/indicator.js:189
+msgid "%s, %s"
+msgstr ""
+
+#: ui/indicator.js:190
+msgid "%s, %s, battery %s percent, low"
+msgstr ""
+
+#: ui/indicator.js:191
+msgid "%s, %s, battery %s percent"
+msgstr ""
+
+#: ui/indicator.js:203
+msgid "Anti-wind: %s (updating)"
+msgstr ""
+
+#: ui/indicator.js:204
+msgid "Anti-wind: %s"
+msgstr ""
+
+#: ui/indicator.js:216
+msgid "Displayed values are stale. Refresh to confirm current settings."
+msgstr ""
+
+#: ui/transparencyRow.js:13 ui/transparencyRow.js:39
+msgid "Transparency: Unavailable"
+msgstr ""
+
+#: ui/transparencyRow.js:15
+msgid "Decrease transparency by 10 percentage points"
+msgstr ""
+
+#: ui/transparencyRow.js:17
+msgid "Transparency percentage"
+msgstr ""
+
+#: ui/transparencyRow.js:18
+msgid "Increase transparency by 10 percentage points"
+msgstr ""
+
+#: ui/transparencyRow.js:39
+msgid "Transparency: %s"
+msgstr ""

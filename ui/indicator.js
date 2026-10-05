@@ -10,9 +10,11 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {ensureActorVisibleInScrollView} from 'resource:///org/gnome/shell/misc/animationUtils.js';
 import {FIELDS} from '../lib/commands.js';
 import {diagnostic} from '../lib/headsetController.js';
+import {_, N_, format} from '../lib/i18n.js';
 import {TransparencyRow} from './transparencyRow.js';
 
 const LOW_BATTERY = 15;
+const MODE_LABELS = {off: N_('Off'), auto: N_('Auto'), max: N_('Max')};
 
 function batteryIcon(level) {
     if (level === undefined) return 'battery-missing-symbolic';
@@ -38,7 +40,7 @@ class StayMenuItem extends PopupMenu.PopupMenuItem {
 
 export const Indicator = GObject.registerClass(class Indicator extends PanelMenu.Button {
     _init(controller, settings, openPreferences) {
-        super._init(0.5, 'Momentum 4 Controls');
+        super._init(0.5, _('Momentum 4 Controls'));
         this.controller = controller;
         this.settings = settings;
         this.signals = [];
@@ -56,9 +58,9 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
         this.battery = new St.Label({text: '', y_align: Clutter.ActorAlign.CENTER});
         panelBox.add_child(this.battery);
         this.add_child(panelBox);
-        this.accessible_name = 'Momentum 4 Controls';
-        this.header = new PopupMenu.PopupImageMenuItem('Momentum 4 Controls', 'battery-missing-symbolic', {reactive: false, can_focus: false});
-        this.status = new PopupMenu.PopupMenuItem('Checking', {reactive: false, can_focus: false});
+        this.accessible_name = _('Momentum 4 Controls');
+        this.header = new PopupMenu.PopupImageMenuItem(_('Momentum 4 Controls'), 'battery-missing-symbolic', {reactive: false, can_focus: false});
+        this.status = new PopupMenu.PopupMenuItem(_('Checking'), {reactive: false, can_focus: false});
         this.menu.addMenuItem(this.header);
         this.menu.addMenuItem(this.status);
         // Settings scroll inside a public PopupMenuSection; the header and the
@@ -69,11 +71,11 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
         this.controls.actor = this.scroll;
         this.menu.addMenuItem(this.controls);
         this.menu.box.add_style_class_name('momentumctl-menu');
-        this.controls.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('Noise control'));
+        this.controls.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Noise control')));
         this.switches = new Map();
         const addSwitch = key => {
-            const item = new StaySwitchItem(FIELDS[key].title, false);
-            item.accessible_name = FIELDS[key].title;
+            const item = new StaySwitchItem(_(FIELDS[key].title), false);
+            item.accessible_name = _(FIELDS[key].title);
             connect(item, 'toggled', (_item, value) => {
                 // Shell 50 can defer a reentrant notify until the render guard has
                 // cleared. A rendered value always equals the confirmed snapshot.
@@ -87,36 +89,36 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
         this.transparency = new TransparencyRow(controller, connect);
         this.controls.addMenuItem(this.transparency.heading);
         this.controls.addMenuItem(this.transparency.item);
-        this.antiWind = new PopupMenu.PopupSubMenuMenuItem('Anti-wind: Unavailable');
+        this.antiWind = new PopupMenu.PopupSubMenuMenuItem(_('Anti-wind: Unavailable'));
         this.modes = new Map();
         for (const mode of ['off', 'auto', 'max']) {
-            const item = new StayMenuItem(mode[0].toUpperCase() + mode.slice(1));
+            const item = new StayMenuItem(_(MODE_LABELS[mode]));
             connect(item, 'triggered', () => { if (item.sensitive) controller.setSetting('antiWind', mode); });
             this.antiWind.menu.addMenuItem(item);
             this.modes.set(mode, item);
         }
         this.controls.addMenuItem(this.antiWind);
-        this.controls.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('Behaviour'));
+        this.controls.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Behaviour')));
         for (const key of ['smartPause', 'onHeadDetection', 'autoAnswer', 'comfortCall']) addSwitch(key);
         this.detail = new PopupMenu.PopupMenuItem('', {reactive: false, can_focus: false});
         this.detail.label.clutter_text.line_wrap = true;
         this.detail.label.clutter_text.ellipsize = 0;
         this.detail.label.x_expand = true;
         this.menu.addMenuItem(this.detail);
-        this.dismiss = new StayMenuItem('Dismiss update error');
+        this.dismiss = new StayMenuItem(_('Dismiss update error'));
         connect(this.dismiss, 'triggered', () => controller.dismissWriteError());
         this.menu.addMenuItem(this.dismiss);
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        this.refreshItem = new StayMenuItem('Refresh');
+        this.refreshItem = new StayMenuItem(_('Refresh'));
         connect(this.refreshItem, 'triggered', () => { this.localError = ''; controller.refresh(); });
         this.menu.addMenuItem(this.refreshItem);
-        const bluetooth = new PopupMenu.PopupMenuItem('Bluetooth Settings');
+        const bluetooth = new PopupMenu.PopupMenuItem(_('Bluetooth Settings'));
         connect(bluetooth, 'activate', () => this._bluetoothSettings());
         this.menu.addMenuItem(bluetooth);
-        const prefs = new PopupMenu.PopupMenuItem('Preferences');
+        const prefs = new PopupMenu.PopupMenuItem(_('Preferences'));
         connect(prefs, 'activate', () => {
             Promise.resolve(openPreferences()).catch(e => {
-                if (!this.dead) { this.localError = `Could not open Preferences: ${diagnostic(e.message)}`; this.render(controller.current); }
+                if (!this.dead) { this.localError = format(_('Could not open Preferences: %s'), diagnostic(e.message)); this.render(controller.current); }
             });
         });
         this.menu.addMenuItem(prefs);
@@ -151,7 +153,7 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
             GLib.spawn_async(null, [GLib.canonicalize_filename(executable, null), 'bluetooth'], null,
                 GLib.SpawnFlags.DEFAULT, null);
         } catch (e) {
-            this.localError = `Could not open Bluetooth Settings: ${diagnostic(e.message)}`;
+            this.localError = format(_('Could not open Bluetooth Settings: %s'), diagnostic(e.message));
             this.render(this.controller.current);
         }
     }
@@ -174,17 +176,22 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
             const sensitive = Boolean(valid && idle && state.connection === 'ready');
             this.battery.visible = Boolean(valid && this.settings.get_boolean('show-battery-percentage'));
             this.battery.text = valid ? `${state.snapshot.battery}%` : '';
-            this.header.label.text = `Momentum 4 Controls${state.snapshot ? ` · Battery ${state.snapshot.battery}%${state.snapshotStale ? ' (stale)' : ''}` : ''}`;
+            const name = _('Momentum 4 Controls');
+            if (!state.snapshot) this.header.label.text = name;
+            else if (state.snapshotStale) this.header.label.text = format(_('%s · Battery %s (stale)'), name, `${state.snapshot.battery}%`);
+            else this.header.label.text = format(_('%s · Battery %s'), name, `${state.snapshot.battery}%`);
             this.header.setIcon(batteryIcon(state.snapshot?.battery));
             const low = Boolean(valid && state.snapshot.battery <= LOW_BATTERY);
-            let status = state.availability === 'checking' ? 'Checking' : valid ? 'Available' : 'Unavailable';
-            if (!idle) status = ['writing', 'settling', 'verifying'].includes(state.activity) ? 'Updating' : 'Checking';
-            else if (state.readError || state.writeError || this.localError) status = 'Error';
-            this.status.label.text = low ? `${status} · Battery low` : status;
-            this.accessible_name = `Momentum 4 Controls, ${status}${valid ? `, battery ${state.snapshot.battery} percent${low ? ', low' : ''}` : ''}`;
+            let status = state.availability === 'checking' ? _('Checking') : valid ? _('Available') : _('Unavailable');
+            if (!idle) status = ['writing', 'settling', 'verifying'].includes(state.activity) ? _('Updating') : _('Checking');
+            else if (state.readError || state.writeError || this.localError) status = _('Error');
+            this.status.label.text = low ? format(_('%s · Battery low'), status) : status;
+            if (!valid) this.accessible_name = format(_('%s, %s'), name, status);
+            else if (low) this.accessible_name = format(_('%s, %s, battery %s percent, low'), name, status, state.snapshot.battery);
+            else this.accessible_name = format(_('%s, %s, battery %s percent'), name, status, state.snapshot.battery);
             for (const [key, item] of this.switches) {
                 if (state.snapshot) { item.setToggleState(this._shown(state, key)); item.setStatus(null); }
-                else item.setStatus('Unavailable');
+                else item.setStatus(_('Unavailable'));
                 item.sensitive = sensitive;
                 // setStatus(null) itself makes the item reactive. Resync even when
                 // the sensitivity value stayed false across two busy renders.
@@ -192,8 +199,9 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
             }
             this.transparency.render(state, sensitive);
             const mode = this._shown(state, 'antiWind');
-            const updating = state.inFlight?.key === 'antiWind' ? ' (updating)' : '';
-            this.antiWind.label.text = `Anti-wind: ${mode ? mode[0].toUpperCase() + mode.slice(1) + updating : 'Unavailable'}`;
+            if (!mode) this.antiWind.label.text = _('Anti-wind: Unavailable');
+            else if (state.inFlight?.key === 'antiWind') this.antiWind.label.text = format(_('Anti-wind: %s (updating)'), _(MODE_LABELS[mode]));
+            else this.antiWind.label.text = format(_('Anti-wind: %s'), _(MODE_LABELS[mode]));
             // An insensitive submenu header collapses the submenu. Keep it open
             // across a transaction; only the mode rows wait for the result.
             this.antiWind.sensitive = Boolean(valid);
@@ -205,7 +213,7 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
             for (const error of [state.writeError, state.readError]) {
                 if (error) messages.push([error.message, error.detail].filter(Boolean).join(': '));
             }
-            if (state.snapshotStale && state.snapshot) messages.push('Displayed values are stale. Refresh to confirm current settings.');
+            if (state.snapshotStale && state.snapshot) messages.push(_('Displayed values are stale. Refresh to confirm current settings.'));
             this.detail.label.text = messages.filter(Boolean).join('\n');
             this.detail.visible = Boolean(this.detail.label.text);
             this.dismiss.visible = Boolean(state.writeError);

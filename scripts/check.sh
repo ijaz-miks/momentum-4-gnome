@@ -9,6 +9,8 @@ else
     echo 'SKIP bluez: dbus-run-session is not installed'
 fi
 glib-compile-schemas --strict --dry-run schemas
+python3 tests/i18n.test.py
+python3 scripts/i18n.py check
 python3 - <<'PY'
 import ast
 import json

@@ -2,6 +2,7 @@ import Clutter from 'gi://Clutter';
 import St from 'gi://St';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as Slider from 'resource:///org/gnome/shell/ui/slider.js';
+import {_, format} from '../lib/i18n.js';
 
 export class TransparencyRow {
     constructor(controller, connect) {
@@ -9,12 +10,12 @@ export class TransparencyRow {
         this.rendering = false;
         this.dragging = false;
         this.value = null;
-        this.heading = new PopupMenu.PopupMenuItem('Transparency: Unavailable', {reactive: false, can_focus: false});
+        this.heading = new PopupMenu.PopupMenuItem(_('Transparency: Unavailable'), {reactive: false, can_focus: false});
         this.item = new PopupMenu.PopupBaseMenuItem({activate: false, can_focus: false});
-        this.minus = new St.Button({label: '−', style_class: 'button', can_focus: true, accessible_name: 'Decrease transparency by 10 percentage points'});
+        this.minus = new St.Button({label: '−', style_class: 'button', can_focus: true, accessible_name: _('Decrease transparency by 10 percentage points')});
         this.slider = new Slider.Slider(0);
-        this.slider.accessible_name = 'Transparency percentage';
-        this.plus = new St.Button({label: '+', style_class: 'button', can_focus: true, accessible_name: 'Increase transparency by 10 percentage points'});
+        this.slider.accessible_name = _('Transparency percentage');
+        this.plus = new St.Button({label: '+', style_class: 'button', can_focus: true, accessible_name: _('Increase transparency by 10 percentage points')});
         for (const actor of [this.minus, this.slider, this.plus]) this.item.add_child(actor);
         connect(this.minus, 'clicked', () => this.step(-10));
         connect(this.plus, 'clicked', () => this.step(10));
@@ -35,7 +36,7 @@ export class TransparencyRow {
         this.rendering = true;
         try {
             this.value = state.preview ?? state.snapshot?.transparency ?? null;
-            this.heading.label.text = `Transparency: ${this.value === null ? 'Unavailable' : `${this.value}%`}`;
+            this.heading.label.text = this.value === null ? _('Transparency: Unavailable') : format(_('Transparency: %s'), `${this.value}%`);
             if (this.value !== null) this.slider.value = this.value / 100;
             this.slider.visible = this.value !== null;
             for (const actor of [this.minus, this.slider, this.plus]) {

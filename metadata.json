@@ -4,5 +4,6 @@
   "description": "Control Sennheiser Momentum 4 headphones through momentumctl",
   "shell-version": ["50"],
   "version": 1,
-  "settings-schema": "org.gnome.shell.extensions.momentumctl"
+  "settings-schema": "org.gnome.shell.extensions.momentumctl",
+  "gettext-domain": "momentum4"
 }

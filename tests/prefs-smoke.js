@@ -39,6 +39,8 @@ GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
         if (settings.get_string('cli-path') !== path) throw new Error('Invalid path was applied');
         entry.text = path;
         entry.emit('entry-activated');
+        if (!widgets.some(w => w instanceof Gtk.Label && w.get_text().includes('for example <Super>m')))
+            throw new Error('Shortcut description markup was not escaped');
         const shortcut = widgets.filter(w => w instanceof Adw.EntryRow).find(w => w.title === 'Shortcut');
         if (!shortcut) throw new Error('Missing shortcut row');
         shortcut.text = 'not a shortcut<';

@@ -7,6 +7,7 @@ import {BluezWatcher} from './lib/bluezWatcher.js';
 import {CliExecutor} from './lib/cliExecutor.js';
 import {resolveExecutable} from './lib/executableResolver.js';
 import {HeadsetController} from './lib/headsetController.js';
+import {setTranslator} from './lib/i18n.js';
 import {scheduler} from './lib/scheduler.js';
 import {Indicator} from './ui/indicator.js';
 
@@ -18,6 +19,7 @@ export default class MomentumExtension extends Extension {
         this.enabled = true;
         this.epoch = (this.epoch ?? 0) + 1;
         try {
+            setTranslator(text => this.gettext(text));
             this.settings = this.getSettings();
             this.settingsSignal = this.settings.connect('changed::cli-path', () => this._replace());
             this.batterySignal = this.settings.connect('changed::show-battery-percentage',
@@ -98,5 +100,6 @@ export default class MomentumExtension extends Extension {
         this.controller = null;
         this.settings = null;
         this.sleeping = false;
+        setTranslator(null);
     }
 }

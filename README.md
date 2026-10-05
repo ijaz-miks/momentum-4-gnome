@@ -149,6 +149,22 @@ gjs -m tests/hardware-read.js [path-to-momentumctl]
 
 Manual acceptance steps are in `docs/manual-test-plan.md`.
 
+## Translations
+
+User-facing strings are marked with `_('...')` (or `N_('...')` for values
+translated where they are shown) and use the `momentum4` gettext domain.
+Status labels parsed from `momentumctl` stay in English.
+
+```bash
+python3 scripts/i18n.py pot      # refresh po/momentum4.pot after changing strings
+cp po/momentum4.pot po/de.po     # start a translation, then fill in msgstr values
+```
+
+`scripts/check.sh` fails when the template is missing a marked string.
+`package.py` compiles every `po/<language>.po` into
+`locale/<language>/LC_MESSAGES/momentum4.mo` inside the bundle. The tooling uses
+only the Python standard library; GNU gettext is not required.
+
 ## Layout
 
 | Path | Responsibility |
@@ -159,6 +175,8 @@ Manual acceptance steps are in `docs/manual-test-plan.md`.
 | `lib/headsetController.js` | Transactions, state, timers and intent (no Shell imports, unit tested) |
 | `ui/` | Panel indicator and menu widgets |
 | `extension.js` | Settings, lifecycle and system signal subscriptions |
+| `lib/bluezWatcher.js` | Read-only BlueZ connection observer |
+| `lib/i18n.js`, `po/`, `scripts/i18n.py` | Translation hooks, template and tooling |
 | `prefs.js` | GTK4 preferences; never talks to the headset |
 
 ## License
