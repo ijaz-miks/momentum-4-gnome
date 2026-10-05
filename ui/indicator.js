@@ -60,7 +60,7 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
             connect(item, 'toggled', (_item, value) => {
                 // Shell 50 can defer a reentrant notify until the render guard has
                 // cleared. A rendered value always equals the confirmed snapshot.
-                if (!this.rendering && item.sensitive && value !== controller.current.snapshot?.[key])
+                if (!this.rendering && item.sensitive && value !== this._shown(controller.current, key))
                     controller.setSetting(key, value);
             });
             this.switches.set(key, item);
@@ -137,6 +137,10 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
             this.render(this.controller.current);
         }
     }
+    // A write in progress shows its requested value; everything else is confirmed.
+    _shown(state, key) {
+        return state.inFlight?.key === key ? state.inFlight.value : state.snapshot?.[key];
+    }
     render(state) {
         if (this.dead) return;
         this.rendering = true;
@@ -159,7 +163,7 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
             this.status.label.text = status;
             this.accessible_name = `Momentum 4 Controls, ${status}${valid ? `, battery ${state.snapshot.battery} percent` : ''}`;
             for (const [key, item] of this.switches) {
-                if (state.snapshot) { item.setToggleState(state.snapshot[key]); item.setStatus(null); }
+                if (state.snapshot) { item.setToggleState(this._shown(state, key)); item.setStatus(null); }
                 else item.setStatus('Unavailable');
                 item.sensitive = sensitive;
                 // setStatus(null) itself makes the item reactive. Resync even when
@@ -167,8 +171,9 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
                 item.syncSensitive();
             }
             this.transparency.render(state, sensitive);
-            const mode = state.snapshot?.antiWind;
-            this.antiWind.label.text = `Anti-wind: ${mode ? mode[0].toUpperCase() + mode.slice(1) : 'Unavailable'}`;
+            const mode = this._shown(state, 'antiWind');
+            const updating = state.inFlight?.key === 'antiWind' ? ' (updating)' : '';
+            this.antiWind.label.text = `Anti-wind: ${mode ? mode[0].toUpperCase() + mode.slice(1) + updating : 'Unavailable'}`;
             // An insensitive submenu header collapses the submenu. Keep it open
             // across a transaction; only the mode rows wait for the result.
             this.antiWind.sensitive = Boolean(valid);

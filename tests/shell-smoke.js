@@ -117,6 +117,8 @@ async function execute() {
         const clicked = ui.switches.get('smartPause');
         const clickedBefore = extension.controller.current.snapshot.smartPause;
         await click(clicked);
+        // Mid-transaction (settling), the switch shows the requested position rather than bouncing back.
+        assert(extension.controller.current.inFlight?.key === 'smartPause' && clicked.state === !clickedBefore, 'Switch bounced back during its update');
         await until(() => extension.controller.current.snapshot.smartPause === !clickedBefore, 'Pointer click did not toggle switch');
         assert(ui.menu.isOpen, 'Clicking a switch closed the menu');
         await ready(extension);
@@ -125,7 +127,7 @@ async function execute() {
         await until(() => events().filter(e => e.phase === 'start' && e.args[0] === 'status').length > readsBefore, 'Refresh click did not read');
         assert(ui.menu.isOpen, 'Clicking Refresh closed the menu');
         await ready(extension);
-        checks.push('Pointer clicks on switches, anti-wind modes and Refresh keep the menu open');
+        checks.push('Pointer clicks on switches, anti-wind modes and Refresh keep the menu open; switch shows requested value while updating');
         const beforeDrag = writes();
         ui.transparency.slider.emit('drag-begin');
         ui.transparency.slider.value = 0.43;

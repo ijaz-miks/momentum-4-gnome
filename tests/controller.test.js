@@ -91,6 +91,24 @@ export async function run() {
         assert(c.current.writeError.code === 'timeout');
         await c.stop();
     }
+    // The in-flight write is visible for display and cleared once verified or failed.
+    for (const fail of [false, true]) {
+        const {c, scheduler: t, executor: e} = await setup();
+        const job = c.setSetting('anc', false); await flush();
+        equal(c.current.inFlight, {key: 'anc', value: false});
+        assert(c.current.snapshot.anc === true, 'In-flight value leaked into the snapshot');
+        e.reply({fail}); await flush();
+        if (fail) assert(c.current.inFlight === null);
+        await t.tick(500); e.reply(); await flush(); await job;
+        assert(c.current.inFlight === null && c.current.activity === 'idle');
+        assert(c.current.snapshot.anc === fail);
+        await c.stop();
+    }
+    {
+        const {c, executor: e} = await setup();
+        c.setSetting('anc', false); await flush();
+        const stopped = c.stop(); assert(c.current.inFlight === null); e.cancel(); await stopped;
+    }
     for (const kind of ['mismatch', 'bad-verification']) {
         const {c, scheduler: t, executor: e} = await setup();
         c.setSetting('anc', false); await flush(); e.reply({mismatch: kind === 'mismatch'}); await flush();
