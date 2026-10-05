@@ -47,6 +47,14 @@ async function configureScale() {
     checks.push(`Actual isolated monitor scale ${actual * 100}%`);
     return actual;
 }
+// A pointer click reaches an item through its ClickGesture, which calls activate().
+// Synthetic pointer events are not used: this headless startup leaves the
+// Overview in the pick tree, so it would receive them instead of the menu.
+async function click(item) {
+    assert(item.mapped && item.reactive, `${item} is not clickable`);
+    item._clickGesture.emit('recognize');
+    await sleep(120);
+}
 async function ready(extension) {
     await until(() => extension.controller?.ready && extension.controller.current.activity === 'idle', 'Controller did not become ready');
 }
@@ -97,12 +105,27 @@ async function execute() {
             await until(() => extension.controller.current.snapshot[key] === !before, `${key} setter failed`);
             await ready(extension);
         }
+        ui.antiWind.setSubmenuShown(true); await sleep(250);
         for (const [mode, item] of ui.modes) {
-            item.emit('activate', null);
+            await click(item);
             await until(() => extension.controller.current.snapshot.antiWind === mode, `Anti-wind ${mode} failed`);
+            assert(ui.menu.isOpen, `Clicking anti-wind ${mode} closed the menu`);
             await ready(extension);
         }
+        ui.antiWind.setSubmenuShown(false); await sleep(250);
         checks.push('All six switches and anti-wind off/auto/max verified through mock CLI');
+        const clicked = ui.switches.get('smartPause');
+        const clickedBefore = extension.controller.current.snapshot.smartPause;
+        await click(clicked);
+        await until(() => extension.controller.current.snapshot.smartPause === !clickedBefore, 'Pointer click did not toggle switch');
+        assert(ui.menu.isOpen, 'Clicking a switch closed the menu');
+        await ready(extension);
+        const readsBefore = events().filter(e => e.phase === 'start' && e.args[0] === 'status').length;
+        await click(ui.refreshItem);
+        await until(() => events().filter(e => e.phase === 'start' && e.args[0] === 'status').length > readsBefore, 'Refresh click did not read');
+        assert(ui.menu.isOpen, 'Clicking Refresh closed the menu');
+        await ready(extension);
+        checks.push('Pointer clicks on switches, anti-wind modes and Refresh keep the menu open');
         const beforeDrag = writes();
         ui.transparency.slider.emit('drag-begin');
         ui.transparency.slider.value = 0.43;
@@ -135,6 +158,7 @@ async function execute() {
         await key(Clutter.KEY_space);
         await until(() => extension.controller.current.snapshot.anc === !keyboardBefore, 'Space failed to toggle switch');
         await ready(extension);
+        assert(ui.menu.isOpen && global.stage.get_key_focus() === focused, 'Keyboard focus left the switch after its update');
         ui.transparency.slider.grab_key_focus();
         const transparencyBefore = extension.controller.current.snapshot.transparency;
         await key(Clutter.KEY_Right);

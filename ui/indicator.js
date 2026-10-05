@@ -11,6 +11,22 @@ import {FIELDS} from '../lib/commands.js';
 import {diagnostic} from '../lib/headsetController.js';
 import {TransparencyRow} from './transparencyRow.js';
 
+// The stock items close the whole menu on click or Enter. Settings rows stay open
+// so several changes, and the result of Refresh, remain visible.
+const StaySwitchItem = GObject.registerClass(class StaySwitchItem extends PopupMenu.PopupSwitchMenuItem {
+    activate(_event) {
+        if (this._switch.mapped)
+            this.toggle();
+    }
+});
+
+const StayMenuItem = GObject.registerClass({Signals: {'triggered': {}}},
+class StayMenuItem extends PopupMenu.PopupMenuItem {
+    activate(_event) {
+        this.emit('triggered');
+    }
+});
+
 export const Indicator = GObject.registerClass(class Indicator extends PanelMenu.Button {
     _init(controller, settings, openPreferences) {
         super._init(0.5, 'Momentum 4 Controls');
@@ -20,6 +36,8 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
         this.rendering = false;
         this.dead = false;
         this.localError = '';
+        this.busyFocus = null;
+        this.focusAfterRender = null;
         const connect = (object, signal, callback) => {
             const id = object.connect(signal, (...args) => { if (!this.dead) return callback(...args); });
             this.signals.push([object, id]);
@@ -37,7 +55,7 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('Noise control'));
         this.switches = new Map();
         const addSwitch = key => {
-            const item = new PopupMenu.PopupSwitchMenuItem(FIELDS[key].title, false);
+            const item = new StaySwitchItem(FIELDS[key].title, false);
             item.accessible_name = FIELDS[key].title;
             connect(item, 'toggled', (_item, value) => {
                 // Shell 50 can defer a reentrant notify until the render guard has
@@ -55,8 +73,8 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
         this.antiWind = new PopupMenu.PopupSubMenuMenuItem('Anti-wind: Unavailable');
         this.modes = new Map();
         for (const mode of ['off', 'auto', 'max']) {
-            const item = new PopupMenu.PopupMenuItem(mode[0].toUpperCase() + mode.slice(1));
-            connect(item, 'activate', () => { if (item.sensitive) controller.setSetting('antiWind', mode); });
+            const item = new StayMenuItem(mode[0].toUpperCase() + mode.slice(1));
+            connect(item, 'triggered', () => { if (item.sensitive) controller.setSetting('antiWind', mode); });
             this.antiWind.menu.addMenuItem(item);
             this.modes.set(mode, item);
         }
@@ -68,12 +86,12 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
         this.detail.label.clutter_text.ellipsize = 0;
         this.detail.label.x_expand = true;
         this.menu.addMenuItem(this.detail);
-        this.dismiss = new PopupMenu.PopupMenuItem('Dismiss update error');
-        connect(this.dismiss, 'activate', () => controller.dismissWriteError());
+        this.dismiss = new StayMenuItem('Dismiss update error');
+        connect(this.dismiss, 'triggered', () => controller.dismissWriteError());
         this.menu.addMenuItem(this.dismiss);
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        this.refreshItem = new PopupMenu.PopupMenuItem('Refresh');
-        connect(this.refreshItem, 'activate', () => { this.localError = ''; controller.refresh(); });
+        this.refreshItem = new StayMenuItem('Refresh');
+        connect(this.refreshItem, 'triggered', () => { this.localError = ''; controller.refresh(); });
         this.menu.addMenuItem(this.refreshItem);
         const bluetooth = new PopupMenu.PopupMenuItem('Bluetooth Settings');
         connect(bluetooth, 'activate', () => this._bluetoothSettings());
@@ -122,6 +140,12 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
     render(state) {
         if (this.dead) return;
         this.rendering = true;
+        // Shell moves focus onward when the focused item turns insensitive. Return
+        // it to the control the user was on once the transaction finishes, unless
+        // the user moved focus in the meantime.
+        const focusBefore = global.stage.get_key_focus();
+        if (this.busyFocus && focusBefore !== this.focusAfterRender)
+            this.busyFocus = null;
         try {
             const valid = state.snapshot && !state.snapshotStale;
             const idle = state.activity === 'idle';
@@ -145,7 +169,9 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
             this.transparency.render(state, sensitive);
             const mode = state.snapshot?.antiWind;
             this.antiWind.label.text = `Anti-wind: ${mode ? mode[0].toUpperCase() + mode.slice(1) : 'Unavailable'}`;
-            this.antiWind.sensitive = sensitive;
+            // An insensitive submenu header collapses the submenu. Keep it open
+            // across a transaction; only the mode rows wait for the result.
+            this.antiWind.sensitive = Boolean(valid);
             for (const [key, item] of this.modes) {
                 item.sensitive = sensitive;
                 item.setOrnament(key === mode ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE);
@@ -159,6 +185,16 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
             this.detail.visible = Boolean(this.detail.label.text);
             this.dismiss.visible = Boolean(state.writeError);
             this.refreshItem.sensitive = idle;
+            const controls = [...this.switches.values(), ...this.modes.values(), this.refreshItem, this.dismiss,
+                this.transparency.minus, this.transparency.slider, this.transparency.plus];
+            if (!sensitive && !this.busyFocus && controls.includes(focusBefore))
+                this.busyFocus = focusBefore;
+            else if (sensitive && this.busyFocus) {
+                if (this.menu.isOpen && this.busyFocus.mapped && this.busyFocus.can_focus)
+                    this.busyFocus.grab_key_focus();
+                this.busyFocus = null;
+            }
+            this.focusAfterRender = global.stage.get_key_focus();
         } finally { this.rendering = false; }
     }
     destroy() {
