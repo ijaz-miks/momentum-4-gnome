@@ -104,6 +104,10 @@ async function execute() {
         let ui = extension.indicator;
         ui.menu.open(); await sleep(250);
         assert(ui.switches.size === 6 && ui.modes.size === 3 && ui.battery.text === '82%', 'Missing controls or battery');
+        assert(ui.header._icon.icon_name === 'battery-level-80-symbolic', 'Battery level icon not shown');
+        ui.render({...extension.controller.current, snapshot: Object.freeze({...extension.controller.current.snapshot, battery: 12})});
+        assert(ui.status.label.text.endsWith('Battery low') && ui.header._icon.icon_name === 'battery-level-10-symbolic', 'Low battery not shown');
+        ui.render(extension.controller.current);
         assert(ui.scroll.height <= Main.layoutManager.primaryMonitor.height, 'Menu exceeds monitor');
         const original = extension.controller.current;
         const start = writes();
@@ -112,7 +116,7 @@ async function execute() {
         ui.render({...original, snapshot: Object.freeze(changed)});
         ui.render(original); await sleep(450);
         assert(writes() === start, 'Rendering fired a setter');
-        checks.push('Actual Shell 50 switch and slider signal feedback suppressed');
+        checks.push('Actual Shell 50 switch and slider signal feedback suppressed; battery level icon and low battery hint');
         ui.switches.get('anc').grab_key_focus();
         assert(global.stage.get_key_focus() === ui.switches.get('anc'), 'Switch keyboard focus failed');
         ui.transparency.slider.grab_key_focus();

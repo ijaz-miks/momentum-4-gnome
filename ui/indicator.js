@@ -12,6 +12,14 @@ import {FIELDS} from '../lib/commands.js';
 import {diagnostic} from '../lib/headsetController.js';
 import {TransparencyRow} from './transparencyRow.js';
 
+const LOW_BATTERY = 15;
+
+function batteryIcon(level) {
+    if (level === undefined) return 'battery-missing-symbolic';
+    // Adwaita provides battery-level icons in steps of ten.
+    return `battery-level-${Math.round(level / 10) * 10}-symbolic`;
+}
+
 // The stock items close the whole menu on click or Enter. Settings rows stay open
 // so several changes, and the result of Refresh, remain visible.
 const StaySwitchItem = GObject.registerClass(class StaySwitchItem extends PopupMenu.PopupSwitchMenuItem {
@@ -49,7 +57,7 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
         panelBox.add_child(this.battery);
         this.add_child(panelBox);
         this.accessible_name = 'Momentum 4 Controls';
-        this.header = new PopupMenu.PopupMenuItem('Momentum 4 Controls', {reactive: false, can_focus: false});
+        this.header = new PopupMenu.PopupImageMenuItem('Momentum 4 Controls', 'battery-missing-symbolic', {reactive: false, can_focus: false});
         this.status = new PopupMenu.PopupMenuItem('Checking', {reactive: false, can_focus: false});
         this.menu.addMenuItem(this.header);
         this.menu.addMenuItem(this.status);
@@ -167,11 +175,13 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
             this.battery.visible = Boolean(valid && this.settings.get_boolean('show-battery-percentage'));
             this.battery.text = valid ? `${state.snapshot.battery}%` : '';
             this.header.label.text = `Momentum 4 Controls${state.snapshot ? ` · Battery ${state.snapshot.battery}%${state.snapshotStale ? ' (stale)' : ''}` : ''}`;
+            this.header.setIcon(batteryIcon(state.snapshot?.battery));
+            const low = Boolean(valid && state.snapshot.battery <= LOW_BATTERY);
             let status = state.availability === 'checking' ? 'Checking' : valid ? 'Available' : 'Unavailable';
             if (!idle) status = ['writing', 'settling', 'verifying'].includes(state.activity) ? 'Updating' : 'Checking';
             else if (state.readError || state.writeError || this.localError) status = 'Error';
-            this.status.label.text = status;
-            this.accessible_name = `Momentum 4 Controls, ${status}${valid ? `, battery ${state.snapshot.battery} percent` : ''}`;
+            this.status.label.text = low ? `${status} · Battery low` : status;
+            this.accessible_name = `Momentum 4 Controls, ${status}${valid ? `, battery ${state.snapshot.battery} percent${low ? ', low' : ''}` : ''}`;
             for (const [key, item] of this.switches) {
                 if (state.snapshot) { item.setToggleState(this._shown(state, key)); item.setStatus(null); }
                 else item.setStatus('Unavailable');
