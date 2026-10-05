@@ -195,6 +195,25 @@ export async function run() {
         const wake = c.resume(); await flush(); e.reply(); await wake;
         assert(c.ready); await c.stop();
     }
+    // A missed logind wake signal: background reads stay paused, user actions resume.
+    {
+        const t = new Clock(); const e = new FakeExecutor();
+        let woke = 0;
+        const c = new HeadsetController({scheduler: t, executor: e, resolve: () => '/mock', onWake: () => woke++});
+        c.start(); await flush(); e.reply(); await flush();
+        c.refresh(); await flush();
+        const paused = c.pause(); assert(c.current.activity === 'stopping'); await paused; await flush();
+        assert(c.current.activity === 'idle' && !c.ready, 'Paused controller did not settle to idle');
+        await c.refresh('poll'); assert(!e.pending && woke === 0, 'Background read resumed a sleep pause');
+        const wake = c.refresh('manual'); await flush();
+        assert(woke === 1 && e.pending, 'Manual refresh did not resume'); e.reply(); await wake; assert(c.ready);
+        c.pause(); await flush(); c.setMenuOpen(true); await flush();
+        assert(woke === 2 && e.pending, 'Opening the menu did not resume'); e.reply(); await flush();
+        // A lifecycle-barrier pause (set directly by the extension) is never resumed by the user.
+        c.paused = true; c.sleepPaused = false;
+        await c.refresh('manual'); assert(!e.pending && woke === 2);
+        await c.stop();
+    }
     {
         const t = new Clock(); const e = new FakeExecutor();
         const c = new HeadsetController({scheduler: t, executor: e, resolve: () => { throw new Error('missing'); }});

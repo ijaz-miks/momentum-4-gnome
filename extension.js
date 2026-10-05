@@ -53,7 +53,8 @@ export default class MomentumExtension extends Extension {
             `Momentum CLI operation ${r.operationId}: exit=${r.exitCode}, signal=${r.signal}, timeout=${r.timedOut}, streamError=${Boolean(r.error)}, elapsed=${Math.round(r.elapsedMs)}ms`)});
         this.controller = new HeadsetController({executor, scheduler, resolve: resolveExecutable,
             cliPath: this.settings.get_string('cli-path'),
-            pollWhileClosed: this.settings.get_boolean('show-battery-percentage')});
+            pollWhileClosed: this.settings.get_boolean('show-battery-percentage'),
+            onWake: () => { this.sleeping = false; }});
         const controller = this.controller;
         controller.link = this.link;
         // UI actions must also wait for an earlier lifecycle's child to exit.
