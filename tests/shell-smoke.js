@@ -251,12 +251,20 @@ async function execute() {
         assert(events().length === beforePrefs, 'Preferences started headset commands');
         checks.push('Packaged GTK4 preferences run separately, path validation, battery binding, zero CLI commands');
         ui.menu.open(); await sleep(250);
+        // Simulate a short monitor so the settings section must scroll.
+        ui.menu.box.set_style('max-height: 360px;'); await sleep(300);
+        const [, contentHeight] = ui.controls.box.get_preferred_height(-1);
+        assert(ui.scroll.height < contentHeight, 'Settings section did not shrink to scroll');
+        const visible = (actor, area) => {
+            const [, y] = actor.get_transformed_position();
+            const [, top] = area.get_transformed_position();
+            return y >= top && y + actor.height <= top + area.height + 1;
+        };
+        assert(visible(ui.refreshItem, ui.menu.box), 'Footer actions scrolled out of view');
         ui.switches.get('comfortCall').grab_key_focus();
         await sleep(300);
-        const [, focusedY] = ui.switches.get('comfortCall').get_transformed_position();
-        const [, scrollY] = ui.scroll.get_transformed_position();
-        assert(focusedY >= scrollY && focusedY < scrollY + ui.scroll.height, 'Offscreen keyboard focus was not revealed');
-        checks.push('Scrolling reveals lower controls on keyboard focus');
+        assert(visible(ui.switches.get('comfortCall'), ui.scroll), 'Offscreen keyboard focus was not revealed');
+        checks.push('Settings scroll on a short monitor, focus reveals lower controls, footer stays visible');
         const screenshot = new Shell.Screenshot();
         const file = Gio.File.new_for_path(`${output}/menu.png`);
         const stream = file.create(Gio.FileCreateFlags.NONE, null);

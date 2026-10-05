@@ -2,6 +2,7 @@ import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
+import Shell from 'gi://Shell';
 import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
@@ -52,7 +53,15 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
         this.status = new PopupMenu.PopupMenuItem('Checking', {reactive: false, can_focus: false});
         this.menu.addMenuItem(this.header);
         this.menu.addMenuItem(this.status);
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('Noise control'));
+        // Settings scroll inside a public PopupMenuSection; the header and the
+        // actions below stay visible. Keyboard navigation crosses into it natively.
+        this.controls = new PopupMenu.PopupMenuSection();
+        this.scroll = new St.ScrollView({hscrollbar_policy: St.PolicyType.NEVER,
+            vscrollbar_policy: St.PolicyType.AUTOMATIC, child: this.controls.box, y_expand: true});
+        this.controls.actor = this.scroll;
+        this.menu.addMenuItem(this.controls);
+        this.menu.box.add_style_class_name('momentumctl-menu');
+        this.controls.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('Noise control'));
         this.switches = new Map();
         const addSwitch = key => {
             const item = new StaySwitchItem(FIELDS[key].title, false);
@@ -64,12 +73,12 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
                     controller.setSetting(key, value);
             });
             this.switches.set(key, item);
-            this.menu.addMenuItem(item);
+            this.controls.addMenuItem(item);
         };
         addSwitch('anc'); addSwitch('adaptive');
         this.transparency = new TransparencyRow(controller, connect);
-        this.menu.addMenuItem(this.transparency.heading);
-        this.menu.addMenuItem(this.transparency.item);
+        this.controls.addMenuItem(this.transparency.heading);
+        this.controls.addMenuItem(this.transparency.item);
         this.antiWind = new PopupMenu.PopupSubMenuMenuItem('Anti-wind: Unavailable');
         this.modes = new Map();
         for (const mode of ['off', 'auto', 'max']) {
@@ -78,8 +87,8 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
             this.antiWind.menu.addMenuItem(item);
             this.modes.set(mode, item);
         }
-        this.menu.addMenuItem(this.antiWind);
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('Behaviour'));
+        this.controls.addMenuItem(this.antiWind);
+        this.controls.addMenuItem(new PopupMenu.PopupSeparatorMenuItem('Behaviour'));
         for (const key of ['smartPause', 'onHeadDetection', 'autoAnswer', 'comfortCall']) addSwitch(key);
         this.detail = new PopupMenu.PopupMenuItem('', {reactive: false, can_focus: false});
         this.detail.label.clutter_text.line_wrap = true;
@@ -103,22 +112,17 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
             });
         });
         this.menu.addMenuItem(prefs);
-        // PopupMenu owns keyboard navigation; wrap its content in a native scroll view.
-        this.menu._boxPointer.bin.set_child(null);
-        this.scroll = new St.ScrollView({hscrollbar_policy: St.PolicyType.NEVER, vscrollbar_policy: St.PolicyType.AUTOMATIC});
-        this.scroll.add_style_class_name('momentumctl-menu');
-        this.scroll.set_child(this.menu.box);
-        this.menu._boxPointer.bin.set_child(this.scroll);
+        // Capping the menu box lets its BoxLayout shrink the scroll section.
         const fit = () => {
             if (!this.get_stage()) return;
             const monitor = Main.layoutManager.findMonitorForActor(this) ?? Main.layoutManager.primaryMonitor;
-            if (monitor) this.scroll.set_style(`max-height: ${Math.max(180, monitor.height - Main.panel.height - 48)}px; max-width: ${Math.max(240, monitor.width - 48)}px;`);
+            if (monitor) this.menu.box.set_style(`max-height: ${Math.max(240, monitor.height - Main.panel.height - 48)}px; max-width: ${Math.max(240, monitor.width - 48)}px;`);
         };
         connect(this.menu, 'open-state-changed', (_menu, open) => { fit(); controller.setMenuOpen(open); });
         connect(Main.layoutManager, 'monitors-changed', fit);
         connect(global.stage, 'notify::key-focus', () => {
             const focused = global.stage.get_key_focus();
-            if (this.menu.isOpen && focused?.has_allocation() && this.menu.box.contains(focused))
+            if (this.menu.isOpen && focused?.has_allocation() && this.controls.box.contains(focused))
                 ensureActorVisibleInScrollView(this.scroll, focused);
         });
         connect(settings, 'changed::show-battery-percentage', () => this.render(controller.current));
@@ -127,6 +131,12 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
     }
     _bluetoothSettings() {
         try {
+            // Launch through the app system for startup notification and focus.
+            const app = Shell.AppSystem.get_default().lookup_app('gnome-bluetooth-panel.desktop');
+            if (app) {
+                app.activate();
+                return;
+            }
             const executable = GLib.find_program_in_path('gnome-control-center');
             if (!executable) throw new Error('gnome-control-center was not found');
             // GLib's default spawn automatically reaps this OS settings application.
