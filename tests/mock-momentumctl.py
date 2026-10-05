@@ -51,6 +51,9 @@ try:
     if mode == 'error' or (mode == 'set-error' and sys.argv[1] == 'set'):
         print('mock protocol failure', file=sys.stderr)
         sys.exit(7)
+    if mode == 'rust-log':
+        print(os.environ.get('RUST_LOG', 'missing'))
+        sys.exit(0)
     if mode == 'locale':
         print(os.environ.get('LC_ALL', 'missing'))
         sys.exit(0)

@@ -43,6 +43,9 @@ export async function run() {
     };
     assert(parseStatus((await run('stateful')).stdout).battery === 82);
     equal((await run('locale')).stdout.trim(), 'C');
+    GLib.setenv('RUST_LOG', 'trace', true);
+    equal((await run('rust-log')).stdout.trim(), 'missing', 'RUST_LOG reached the CLI');
+    GLib.unsetenv('RUST_LOG');
     const error = await run('error'); assert(error.exitCode === 7 && error.stderr.includes('protocol failure'));
     assert((await run('unavailable')).exitCode === 1);
     assert((await run('invalid-utf8')).error);
@@ -80,5 +83,5 @@ export async function run() {
             equal(ev.overlap, [], 'PIDs alive at actual launch');
         }
     }
-    assert(sequence === 10);
+    assert(sequence === 11);
 }
