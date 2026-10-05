@@ -195,6 +195,24 @@ async function execute() {
         await key(Clutter.KEY_Escape);
         assert(!ui.menu.isOpen, 'Escape failed to close menu');
         checks.push('Virtual keyboard Up/Down navigation, Space toggle, Right slider, Escape close');
+        // Optional shortcut toggles the menu through real key events.
+        extension.settings.set_strv('momentum4-toggle-menu', ['<Control>F9']); await sleep(200);
+        const chord = async () => {
+            for (const sym of [Clutter.KEY_Control_L, Clutter.KEY_F9]) {
+                keyboard.notify_keyval(GLib.get_monotonic_time(), sym, Clutter.KeyState.PRESSED); await sleep(40); }
+            for (const sym of [Clutter.KEY_F9, Clutter.KEY_Control_L]) {
+                keyboard.notify_keyval(GLib.get_monotonic_time(), sym, Clutter.KeyState.RELEASED); await sleep(40); }
+            await sleep(250);
+        };
+        await chord();
+        assert(ui.menu.isOpen, 'Shortcut did not open the menu');
+        await ready(extension);
+        await chord();
+        assert(!ui.menu.isOpen, 'Shortcut did not close the menu');
+        extension.settings.set_strv('momentum4-toggle-menu', []); await sleep(200);
+        await chord();
+        assert(!ui.menu.isOpen, 'Cleared shortcut still opens the menu');
+        checks.push('Optional keyboard shortcut opens and closes the menu, and can be cleared');
         let commands = events().length;
         extension.settings.set_boolean('show-battery-percentage', false); await sleep(200);
         assert(!ui.battery.visible && events().length === commands, 'Battery preference invoked CLI');

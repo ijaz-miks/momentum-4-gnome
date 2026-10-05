@@ -9,5 +9,10 @@
       <default>true</default>
       <summary>Show valid battery percentage in the panel</summary>
     </key>
+    <key name="momentum4-toggle-menu" type="as">
+      <default>[]</default>
+      <summary>Keyboard shortcut that opens or closes the menu</summary>
+      <description>Empty disables the shortcut. The name is unique because Mutter keybinding names are global.</description>
+    </key>
   </schema>
 </schemalist>

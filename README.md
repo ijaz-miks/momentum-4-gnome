@@ -21,7 +21,8 @@ values are marked stale and the controls are disabled until a valid read.
 
 The menu uses native GNOME Shell widgets, the active theme and normal keyboard
 navigation: Up/Down to move, Enter/Space to activate, Left/Right on the slider
-and Escape to close. It scrolls when it does not fit on the monitor.
+and Escape to close. It scrolls when it does not fit on the monitor. An
+optional keyboard shortcut, set in Preferences, opens and closes the menu.
 
 ## Requirements
 

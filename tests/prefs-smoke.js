@@ -39,10 +39,21 @@ GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
         if (settings.get_string('cli-path') !== path) throw new Error('Invalid path was applied');
         entry.text = path;
         entry.emit('entry-activated');
+        const shortcut = widgets.filter(w => w instanceof Adw.EntryRow).find(w => w.title === 'Shortcut');
+        if (!shortcut) throw new Error('Missing shortcut row');
+        shortcut.text = 'not a shortcut<';
+        shortcut.emit('apply');
+        if (settings.get_strv('momentum4-toggle-menu').length) throw new Error('Invalid shortcut was applied');
+        shortcut.text = '<Control><Alt>F9';
+        shortcut.emit('apply');
+        if (settings.get_strv('momentum4-toggle-menu')[0] !== '<Control><Alt>F9') throw new Error('Shortcut not applied');
+        shortcut.text = '';
+        shortcut.emit('apply');
+        if (settings.get_strv('momentum4-toggle-menu').length) throw new Error('Shortcut not cleared');
         battery.active = !battery.active;
         if (settings.get_boolean('show-battery-percentage') !== battery.active) throw new Error('Preference binding failed');
         battery.active = !battery.active;
-        GLib.file_set_contents(`${GLib.getenv('MOMENTUMCTL_TEST_OUTPUT')}/prefs-result.json`, JSON.stringify({passed: true, checks: ['GTK4/libadwaita packaged preferences window', 'Invalid path rejected on confirmation', 'Apply button, file chooser and resolved path shown', 'GSettings battery binding']}));
+        GLib.file_set_contents(`${GLib.getenv('MOMENTUMCTL_TEST_OUTPUT')}/prefs-result.json`, JSON.stringify({passed: true, checks: ['GTK4/libadwaita packaged preferences window', 'Invalid path rejected on confirmation', 'Apply button, file chooser and resolved path shown', 'Shortcut validation and clearing', 'GSettings battery binding']}));
     } catch (e) {
         GLib.file_set_contents(`${GLib.getenv('MOMENTUMCTL_TEST_OUTPUT')}/prefs-result.json`, JSON.stringify({passed: false, error: e.message}));
     } finally { window.destroy(); loop.quit(); }

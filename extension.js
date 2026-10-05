@@ -1,4 +1,6 @@
 import Gio from 'gi://Gio';
+import Meta from 'gi://Meta';
+import Shell from 'gi://Shell';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import {BluezWatcher} from './lib/bluezWatcher.js';
@@ -27,6 +29,11 @@ export default class MomentumExtension extends Extension {
                 this.controller?.setLinkState(link);
             });
             this.bluez.start();
+            Main.wm.addKeybinding('momentum4-toggle-menu', this.settings, Meta.KeyBindingFlags.NONE,
+                // POPUP lets the same shortcut close the open menu, which holds a modal grab.
+                Shell.ActionMode.NORMAL | Shell.ActionMode.OVERVIEW | Shell.ActionMode.POPUP,
+                () => this.indicator?.menu.toggle());
+            this.keybinding = true;
             this.sleepCancellable = new Gio.Cancellable();
             const epoch = this.epoch;
             Gio.bus_get(Gio.BusType.SYSTEM, this.sleepCancellable, (_source, result) => {
@@ -76,6 +83,8 @@ export default class MomentumExtension extends Extension {
             if (id) this.settings.disconnect(id);
         }
         this.settingsSignal = this.batterySignal = 0;
+        if (this.keybinding) Main.wm.removeKeybinding('momentum4-toggle-menu');
+        this.keybinding = false;
         this.bluez?.stop();
         this.bluez = null;
         this.sleepCancellable?.cancel();

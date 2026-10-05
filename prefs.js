@@ -66,6 +66,28 @@ export default class MomentumPreferences extends ExtensionPreferences {
         const battery = new Adw.SwitchRow({title: 'Show battery percentage in the top bar', subtitle: 'Shown only after a valid status read. When off, the headset is not polled while the menu is closed.'});
         group.add(battery);
         settings.bind('show-battery-percentage', battery, 'active', Gio.SettingsBindFlags.DEFAULT);
+        const keys = new Adw.PreferencesGroup({title: 'Keyboard',
+            description: 'Shortcut that opens or closes the menu, for example <Super>m. Leave empty to disable it.'});
+        page.add(keys);
+        const shortcut = new Adw.EntryRow({title: 'Shortcut', show_apply_button: true,
+            text: settings.get_strv('momentum4-toggle-menu')[0] ?? ''});
+        keys.add(shortcut);
+        const applyShortcut = () => {
+            const text = shortcut.text.trim();
+            if (text === '') {
+                settings.set_strv('momentum4-toggle-menu', []);
+                shortcut.remove_css_class('error');
+                return;
+            }
+            const [ok, key, mods] = Gtk.accelerator_parse(text);
+            if (!ok || !key) { shortcut.add_css_class('error'); return; }
+            const name = Gtk.accelerator_name(key, mods);
+            settings.set_strv('momentum4-toggle-menu', [name]);
+            shortcut.text = name;
+            shortcut.remove_css_class('error');
+        };
+        shortcut.connect('apply', applyShortcut);
+        shortcut.connect('entry-activated', applyShortcut);
         // No controller, subprocess or headset query exists in this process.
     }
 }
