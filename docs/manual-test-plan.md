@@ -9,9 +9,11 @@ mock CLI. They never communicate with Bluetooth.
 | --- | --- |
 | Parser | Nine required fields, ordering, whitespace, CRLF, unknown labels, 0/100, missing/duplicate fields, invalid booleans/modes, malformed/out-of-range percentages and garbage |
 | Commands | All eight exact setters; invalid names/types/ranges and battery writes rejected |
-| Controller | Serialized set/settle/read, latest pending value, superseded request settlement, no-op elimination, refresh coalescing, write priority, preview during refresh, close commit, mismatch, failed verification, error retention, backoff/reset, sleep/wake and stop in each phase |
+| Controller | In-flight display value, BlueZ disconnect/reconnect, no closed-menu polling without battery text, missed-wake recovery, serialized set/settle/read, latest pending value, superseded request settlement, no-op elimination, refresh coalescing, write priority, preview during refresh, close commit, mismatch, failed verification, error retention, backoff/reset, sleep/wake and stop in each phase |
 | Real subprocesses | Stateful mock CLI, filename with spaces, Cargo fallback, missing executable, normal/nonzero/signal exit, UTF-8 failure, output cap, separate stderr, C locale, delayed response, forced timeout, cancellation, PID reaping and immediate replacement |
-| Packaging | Exact production files, compiled schema/defaults, import closure, no mocks/tests, retained installation, refusal to overwrite, hostile traversal/absolute/symlink/UUID/missing-module/duplicate archives rejected |
+| BlueZ watcher | Fake `org.bluez` on a private bus: GAIA-only matching, connect/disconnect/removal, BlueZ loss, no reports after stop |
+| Translations | Literal-only markers, template freshness, .po parsing, .mo read back by Python gettext, translator hooks |
+| Packaging | Exact production files, optional locale entries, compiled schema/defaults, import closure, no mocks/tests, retained installation, refusal to overwrite, hostile traversal/absolute/symlink/UUID/missing-module/duplicate archives rejected |
 
 The mock records PIDs and any earlier surviving PIDs at each launch. Tests
 assert those overlap lists are empty and that terminated children no longer
@@ -22,7 +24,9 @@ exist.
 `scripts/shell-test-retained.py` runs the packaged extension in a private
 headless GNOME Shell with an explicit mock path. It covers all switches,
 anti-wind modes, transparency drag/step/debounce/close commit, virtual keyboard
-navigation, battery preference
+navigation, clicks that must keep the menu open, focus kept on a control
+through its update, the requested value shown while updating, battery icon and
+low battery hint, the optional shortcut, short-monitor scrolling, battery preference
 without CLI activity, a path change during a hung child, malformed status and
 recovery, BlueZ disconnect and reconnect through a fake service, repeated disable/enable, the separate GTK4 preferences process and
 final teardown. The harness fails on JavaScript errors, disposed-actor access
@@ -54,6 +58,12 @@ default 100% light presentation.
 8. Check normal and enlarged fonts, 100% and 200% scale, light and dark styles
    and a small monitor for clipping and readable errors.
 9. Open Bluetooth Settings from the menu.
+10. Set a shortcut in Preferences and use it to open and close the menu,
+    including with another top-bar menu open.
+11. Leave the headset connected for an hour with the menu closed and compare
+    battery drain with and without the panel battery text, which controls
+    whether the extension polls while the menu is closed.
+12. Install a test translation and start a session with that language.
 
 ## Real read
 
