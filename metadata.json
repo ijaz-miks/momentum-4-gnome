@@ -1,0 +1,8 @@
+{
+  "uuid": "momentum4@ijaz-miks.github.io",
+  "name": "Momentum 4 Controls",
+  "description": "Control Sennheiser Momentum 4 headphones through momentumctl",
+  "shell-version": ["50"],
+  "version": 1,
+  "settings-schema": "org.gnome.shell.extensions.momentumctl"
+}

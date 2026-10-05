@@ -1,0 +1,9 @@
+Adaptive:          off
+ANC:               on
+Anti-wind:         auto
+Auto-answer:       off
+Battery:           82%
+Comfort call:      off
+On-head detection: on
+Smart pause:       on
+Transparency:      35%

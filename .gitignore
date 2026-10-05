@@ -1,0 +1,7 @@
+# Retained local build, package and isolated Shell test output.
+/builds/
+__pycache__/
+*.pyc
+*.shell-extension.zip
+schemas/gschemas.compiled
+po/*.mo

@@ -1,0 +1,15 @@
+Momentum 4 Controls is an original GJS implementation.
+
+Backend: momentumctl, MIT licensed, https://codeberg.org/galen/momentumctl
+The extension only runs the installed momentumctl executable. No Rust source
+is included.
+
+Behaviour reference: omarchy-momentumctl, Apache-2.0 licensed,
+https://github.com/timmo001/omarchy-momentumctl
+No QML source, icons or other assets were copied.
+
+The isolated Shell test harness follows the launch procedure of GNOME Shell's
+gnome-shell-test-tool. Its implementation is original.
+
+Sennheiser and Momentum are trademarks of their respective owners. This project
+is not affiliated with or endorsed by Sennheiser.

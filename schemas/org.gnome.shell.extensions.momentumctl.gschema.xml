@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.momentumctl" path="/org/gnome/shell/extensions/momentumctl/">
+    <key name="cli-path" type="s">
+      <default>''</default>
+      <summary>Absolute momentumctl executable filename</summary>
+    </key>
+    <key name="show-battery-percentage" type="b">
+      <default>true</default>
+      <summary>Show valid battery percentage in the panel</summary>
+    </key>
+  </schema>
+</schemalist>
