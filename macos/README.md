@@ -12,7 +12,7 @@ is required at runtime.
 | --- | --- |
 | Devices | Multipoint toggle, paired source list, confirmed connect/disconnect and source switching while preserving this Mac |
 | Noise | ANC, adaptive noise control, anti-wind, transparency, on-head detection and Smart Pause |
-| Sound | Firmware-reported EQ bands and limits, bass boost, speech/podcast mode, existing personalized profile, explicit local preset save/apply/remove/undo |
+| Sound | Firmware-reported EQ bands and limits, bass boost, firmware-dependent sound modes, existing personalized profile, explicit local preset save/apply/remove/undo |
 | More | Auto-answer, Comfort Call, sidetone, auto power-off, tone/voice prompts, audio priority, touch lock, low latency, headset rename and firmware/codec/language information |
 | Settings | Actual launch-at-login status, menu bar battery percentage and headset selection |
 
@@ -58,6 +58,8 @@ procedure before installing an update.
 The build script creates original vector icon artwork and applies a local
 ad-hoc signature. This is a source-build installation, not a Developer ID signed
 or notarized download. No signing credentials are included in this repository.
+A changed locally signed executable can require Bluetooth permission again.
+Allow the current build's standard macOS prompt before using its controls.
 
 Turn on Bluetooth, pair the Momentum 4 with the Mac and allow the standard
 macOS Bluetooth permission prompt. If the headset is disconnected, choose
@@ -81,31 +83,66 @@ Closing the popover commits accepted previews. Opening the menu, waking the
 Mac or restarting the app reads settings without applying stored presets.
 Malformed reads mark retained values stale and disable writes. Firmware-rejected
 optional features show Unavailable. Errors remain visible until dismissed.
+Sound-mode rejections distinguish a profile that needs configuration from a
+mode the firmware does not support. Only an explicit unsupported response
+disables that choice. The observation is scoped to the headset and firmware;
+a different firmware or a live selection supersedes it. Normal startup never
+probes sound-mode support by changing the headset.
 
 The app releases its RFCOMM channel after each transaction. It polls while the
 panel is open, and reads the battery every two minutes while closed when enabled.
 Sleep cancels work; wake starts with a read.
 
-Only the selected headset address, menu preference, login preference and
-explicitly named EQ presets are stored in local user preferences. There is no
+Only the selected headset address, menu preference, login preference,
+explicitly named EQ presets and firmware-specific sound-mode support
+observations are stored in local user preferences. There is no
 telemetry or cloud account. Normal operation does not save packet captures.
 Device names and addresses are shown locally and are not transmitted anywhere.
 
 ## Validation status
 
-The release build, eleven protocol/client checks and nine native UI checks have
-passed on the Apple Silicon development Mac. The Ubuntu regression suite also
-passes. Native launch-at-login registration was verified as enabled without
-additional login-item approval. At publication, live Bluetooth acceptance is pending the macOS Bluetooth
-permission prompt. Physical multipoint, setter and Windows source-switching
-acceptance must not be inferred from the simulated checks.
+The 0.1.2 release build, twelve protocol/client checks and ten native UI checks
+passed on the Apple Silicon development Mac. Native launch-at-login
+registration was verified as enabled without additional login-item approval.
+The current build has macOS Bluetooth permission.
+
+Live reads on Momentum 4 firmware 3.38.3 returned all seventeen settings and
+five EQ bands. Physical testing completed twenty-one checks:
+
+| Physical behavior | Result |
+| --- | --- |
+| Multipoint on/off | Capacity readback and native reconnection verified |
+| Other connected source | Disconnect/reconnect verified while protecting this Mac |
+| ANC, adaptive control, anti-wind, transparency, on-head detection, Smart Pause | Changed, read back and restored |
+| Auto-answer, Comfort Call, bass boost, sidetone, prompts, touch lock, low latency, auto power-off | Changed, read back and restored |
+| Sound mode Off and Equalizer | Changed, read back and restored |
+| Five-band EQ | Negative gain change verified; original gains and mode restored |
+| Headset name | Rename verified and original name restored |
+| Audio priority | Change, reconnection, readback and source restoration verified |
+| Final restoration | All original settings, EQ, name and source connections confirmed |
+
+Speech/Podcast mode returned a generic headset rejection (`0495/0803`,
+payload `83`). Its two-byte mode payload matches the observed Smart Control
+Plus GAIA action, but selection was not accepted on the tested headset. This
+response does not establish the explicit unsupported (`82`) or unconfigured
+(`81`) cases. The physical test correctly reports a failure for this choice;
+the menu retains the confirmed selection and displays the error. No preset
+curve or alternative command is substituted. Personalized mode remains gated
+on an existing calibrated profile and was not physically tested.
+
+Windows switching and replacement when both slots are full are covered by
+simulated checks and still require physical Windows acceptance. The physical
+source check verified disconnect/reconnect of the other active source.
+Simulated checks must not be treated as proof of physical headset behavior.
 
 ## Checks
 
-The standalone `MomentumCoreChecks` executable runs eleven grouped checks for
+The standalone `MomentumCoreChecks` executable runs twelve grouped checks for
 framing, checksums, validation, complete snapshots, switching, rollback,
-unsupported settings and uncertain Bluetooth acknowledgements. It runs without
-Bluetooth and does not depend on XCTest, which is absent from some Command
+unsupported settings and uncertain Bluetooth acknowledgements. Sound-mode
+checks preserve the full rejection payload and require fresh confirmation of
+an already-selected response. The suite runs without Bluetooth and does not
+depend on XCTest, which is absent from some Command
 Line Tools installations.
 
 A packaged app can run native UI checks against an explicit simulated headset:
@@ -143,6 +180,8 @@ open -n -W "$HOME/Applications/Momentum 4 Controls.app" --args \
 ```
 
 Run only one hardware test instance and quit the normal app first. The result
-lists successful readbacks and any restoration failures. A physical source
+lists successful readbacks, firmware limitations, rejection codes and any
+restoration failures. A rejected individual control is followed by confirmation
+of its original value before testing the remaining controls. A physical source
 switch is tested only if another source was connected at the initial snapshot.
 Synthetic Windows switching does not establish physical Windows acceptance.
