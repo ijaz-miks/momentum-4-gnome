@@ -28,6 +28,8 @@ import MomentumBluetooth
         store = HeadsetStore(demo: demo)
         login = LoginItems(demo: demo || CommandLine.arguments.contains("--hardware-read") || CommandLine.arguments.contains("--hardware-test"))
         super.init()
+        (store.transport as? RFCOMMTransport)?.diagnosticsEnabled =
+            CommandLine.arguments.contains("--hardware-read") || CommandLine.arguments.contains("--hardware-test")
     }
     func applicationDidFinishLaunching(_ notification: Notification) {
         installMainMenu()

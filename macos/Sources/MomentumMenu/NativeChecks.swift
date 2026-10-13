@@ -180,6 +180,7 @@ struct NativeCheckFailure: Error, CustomStringConvertible {
         }
         var result: [String: Any] = ["passed": store.ready, "error": store.error ?? ""]
         result["bluetoothAccess"] = (store.transport as? RFCOMMTransport)?.accessStatus
+        result["connectionEvents"] = (store.transport as? RFCOMMTransport)?.diagnosticEvents
         if let snapshot = store.snapshot, store.ready {
             result["battery"] = snapshot.battery; result["firmware"] = snapshot.firmware
             result["supportedControls"] = snapshot.values.count

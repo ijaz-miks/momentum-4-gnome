@@ -5,6 +5,13 @@ import MomentumCore
 
 @MainActor public final class RFCOMMTransport: NSObject, GaiaTransport, IOBluetoothRFCOMMChannelDelegate, IOBluetoothDeviceAsyncCallbacks, CBCentralManagerDelegate {
     public var selectedAddress = ""
+    public var diagnosticsEnabled = false
+    public private(set) var diagnosticEvents: [String] = []
+    private func record(_ event: String) {
+        guard diagnosticsEnabled else { return }
+        diagnosticEvents.append(event)
+        if diagnosticEvents.count > 64 { diagnosticEvents.removeFirst() }
+    }
     public var accessStatus: [String: Int] {
         ["authorization": CBManager.authorization.rawValue, "radioState": bluetooth?.state.rawValue ?? -1]
     }
@@ -97,12 +104,14 @@ import MomentumCore
             throw HeadsetError.unavailable("The headset is disconnected. Choose Connect to this Mac.")
         }
         device = selected
+        record("Paired headset selected; connected=\(selected.isConnected()); cachedGAIA=\(selected.getServiceRecord(for: Self.gaiaUUID) != nil)")
         try await withTaskCancellationHandler(operation: {
             if !selected.isConnected() {
                 try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                     connecting = continuation
                     armTimeout(seconds: 25, operation: "Connecting the paired headset")
                     let status = selected.openConnection(self, withPageTimeout: 0x8000, authenticationRequired: true)
+                    record("Baseband connect started: \(status)")
                     if status != 0 {
                         if selected.isConnected() {
                             connecting = nil; timer?.cancel(); timer = nil; continuation.resume()
@@ -115,6 +124,7 @@ import MomentumCore
                 armTimeout(seconds: 10, operation: "Bluetooth service discovery")
                 // Query all services, then select GAIA from the returned records.
                 let status = selected.performSDPQuery(self)
+                record("Service discovery started: \(status)")
                 if status != 0 { fail(Self.ioError(status)) }
             }
             guard let service = selected.getServiceRecord(for: Self.gaiaUUID) else {
@@ -130,6 +140,7 @@ import MomentumCore
                 var opened: IOBluetoothRFCOMMChannel?
                 let status = selected.openRFCOMMChannelAsync(&opened, withChannelID: id, delegate: self)
                 channel = opened
+                record("RFCOMM open started: \(status)")
                 if status != 0 { fail(Self.ioError(status)) }
             }
         }, onCancel: { Task { @MainActor [weak self] in self?.close() } })
@@ -172,6 +183,7 @@ import MomentumCore
         }
     }
     private func fail(_ error: Error) {
+        record(error.localizedDescription)
         timer?.cancel(); timer = nil
         let authorization = authorizing
         authorizing = nil
@@ -191,6 +203,7 @@ import MomentumCore
     nonisolated public func connectionComplete(_ device: IOBluetoothDevice!, status: IOReturn) {
         Task { @MainActor [weak self] in
             guard let self else { return }
+            self.record("Baseband callback: \(status); selectedDevice=\(self.device === device)")
             guard self.device === device, let continuation = self.connecting else { return }
             self.connecting = nil; self.timer?.cancel(); self.timer = nil
             if status == 0 && device.isConnected() { continuation.resume() }
@@ -200,6 +213,7 @@ import MomentumCore
     nonisolated public func sdpQueryComplete(_ device: IOBluetoothDevice!, status: IOReturn) {
         Task { @MainActor [weak self] in
             guard let self else { return }
+            self.record("Service callback: \(status); selectedDevice=\(self.device === device)")
             guard self.device === device, let continuation = self.querying else { return }
             self.querying = nil; self.timer?.cancel(); self.timer = nil
             if status == 0 { continuation.resume() } else { continuation.resume(throwing: Self.ioError(status)) }
@@ -208,6 +222,7 @@ import MomentumCore
     nonisolated public func rfcommChannelOpenComplete(_ channel: IOBluetoothRFCOMMChannel!, status: IOReturn) {
         Task { @MainActor [weak self] in
             guard let self, self.channel === channel, let continuation = self.opening else { return }
+            self.record("RFCOMM open callback: \(status)")
             self.opening = nil; self.timer?.cancel(); self.timer = nil
             if status == 0 && channel.isOpen() { continuation.resume() }
             else { continuation.resume(throwing: Self.ioError(status)) }
