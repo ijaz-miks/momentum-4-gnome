@@ -8,7 +8,9 @@ import Foundation
         try Task.checkCancellation()
         let response = try await transport.exchange(GaiaFrame(vendor: vendor, command: command, payload: payload))
         guard response.vendor == vendor else { throw HeadsetError.invalid("Unexpected response vendor.") }
-        if response.command == command | 0x180 { throw HeadsetError.rejected(vendor: vendor, command: command) }
+        if response.command == command | 0x180 {
+            throw HeadsetError.rejected(vendor: vendor, command: command, payload: response.payload)
+        }
         guard response.command == command | 0x100 else { throw HeadsetError.invalid("Unexpected response command.") }
         return response.payload
     }
@@ -194,7 +196,12 @@ import Foundation
                 }
             }
         } else {
-            try await write(control.writeCommand, payload: payload, vendor: control.vendor)
+            do { try await write(control.writeCommand, payload: payload, vendor: control.vendor) }
+            catch HeadsetError.rejected(let vendor, let command, let bytes)
+                where control == .soundMode && vendor == control.vendor && command == control.writeCommand && bytes.first == 0x80 {
+                // Another controller may have selected it after our initial read.
+                // The fresh read below must still confirm the requested mode.
+            }
             guard try await self.value(control) == value else { throw HeadsetError.verification("The setting was not confirmed by the headset.") }
         }
     }

@@ -3,7 +3,7 @@ import Foundation
 public enum HeadsetError: Error, LocalizedError, Equatable {
     case invalid(String)
     case unavailable(String)
-    case rejected(vendor: UInt16, command: UInt16)
+    case rejected(vendor: UInt16, command: UInt16, payload: [UInt8] = [])
     case timeout
     case busy
     case verification(String)
@@ -11,7 +11,16 @@ public enum HeadsetError: Error, LocalizedError, Equatable {
     public var errorDescription: String? {
         switch self {
         case .invalid(let reason), .unavailable(let reason), .verification(let reason): return reason
-        case .rejected: return "This headset firmware does not support that command."
+        case .rejected(let vendor, let command, let payload):
+            if vendor == GaiaFrame.sennheiser && command == 0x0803 {
+                switch payload.first {
+                case 0x80: return "That sound mode is already selected."
+                case 0x81: return "That sound mode has not been configured on the headset."
+                case 0x82: return "That sound mode is unavailable on this headset firmware."
+                default: return "The headset rejected the sound-mode change."
+                }
+            }
+            return "The headset rejected the requested command."
         case .timeout: return "The headset did not respond in time. Connect it and try again."
         case .busy: return "Another headset operation is still running."
         }

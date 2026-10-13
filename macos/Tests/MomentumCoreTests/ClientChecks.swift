@@ -85,4 +85,26 @@ import MomentumFixtures
     do { _ = try await optionalClient.snapshot(); throw CheckFailure(description: "Malformed snapshot was accepted") }
     catch HeadsetError.invalid {}
     print("PASS unsupported controls are unavailable and malformed values fail the snapshot")
+
+    let modes = SimulatedTransport()
+    let modeService = HeadsetClient(transport: modes)
+    try await modes.open(reconnect: false)
+    modes.rejectedSoundModes[2] = [0x81, 0x44]
+    do { try await modeService.set(.soundMode, to: 2); throw CheckFailure(description: "Unconfigured sound mode was accepted") }
+    catch HeadsetError.rejected(let vendor, let command, let bytes) {
+        try expectEqual(vendor, GaiaFrame.sennheiser); try expectEqual(command, 0x0803)
+        try expectEqual(bytes, [0x81, 0x44])
+        try expectTrue(HeadsetError.rejected(vendor: vendor, command: command, payload: bytes).localizedDescription.contains("not been configured"))
+    }
+    modes.rejectedSoundModes[2] = [0x82]
+    do { try await modeService.set(.soundMode, to: 2); throw CheckFailure(description: "Unsupported sound mode was accepted") }
+    catch HeadsetError.rejected(_, _, let bytes) { try expectEqual(bytes, [0x82]) }
+    modes.rejectedSoundModes[2] = [0x80]
+    do { try await modeService.set(.soundMode, to: 2); throw CheckFailure(description: "Unverified already-selected mode was accepted") }
+    catch HeadsetError.verification {}
+    modes.selectSoundModeBeforeRejection = true
+    try await modeService.set(.soundMode, to: 2)
+    try expectEqual(modes.values[.soundMode], 2)
+    try expectEqual(modes.frames.last(where: { $0.command == 0x0803 })?.payload, [0, 2])
+    print("PASS sound-mode rejection payloads distinguish unavailable/configuration errors and verify already-selected races")
 }

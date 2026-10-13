@@ -13,6 +13,8 @@ import MomentumCore
         Peer(index: 2, priority: 2, connected: false, name: "Windows PC"),
         Peer(index: 3, priority: 3, connected: false, name: "Ubuntu PC")]
     public var unsupportedControls: Set<Control> = []
+    public var rejectedSoundModes: [Int: [UInt8]] = [:]
+    public var selectSoundModeBeforeRejection = false
     public var malformedControl: Control?
     public var failConnectIndex: Int?
     public var failEQBand: Int?
@@ -46,7 +48,7 @@ import MomentumCore
         if exchangeDelay > 0 { try await Task.sleep(nanoseconds: exchangeDelay) }
         frames.append(frame)
         func reply(_ bytes: [UInt8] = []) -> GaiaFrame { GaiaFrame(vendor: frame.vendor, command: frame.command | 0x100, payload: bytes) }
-        func rejection() -> GaiaFrame { GaiaFrame(vendor: frame.vendor, command: frame.command | 0x180) }
+        func rejection(_ bytes: [UInt8] = []) -> GaiaFrame { GaiaFrame(vendor: frame.vendor, command: frame.command | 0x180, payload: bytes) }
         if let control = Control.allCases.first(where: { $0.readCommand == frame.command && $0.vendor == frame.vendor }) {
             if unsupportedControls.contains(control) { return rejection() }
             if malformedControl == control { return reply([255]) }
@@ -59,6 +61,10 @@ import MomentumCore
         }
         if let control = Control.allCases.first(where: { $0.writeCommand == frame.command && $0.vendor == frame.vendor }) {
             let actual = control == .adaptive && frame.payload.first == 1 ? Control.antiWind : control
+            if actual == .soundMode, let bytes = rejectedSoundModes[Int(frame.payload.last!)] {
+                if selectSoundModeBeforeRejection { values[.soundMode] = Int(frame.payload.last!) }
+                return rejection(bytes)
+            }
             if actual == .autoPowerOff { values[actual] = Int(frame.payload[1]) << 8 | Int(frame.payload[2]) }
             else { values[actual] = Int(frame.payload.last!) }
             if actual == .multipoint {

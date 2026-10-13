@@ -89,7 +89,7 @@ public enum Control: String, CaseIterable, Codable, Sendable {
         switch self {
         case .adaptive: return [3, UInt8(value)]
         case .antiWind: return [1, UInt8(value)]
-        case .soundMode: return [0, UInt8(value)]
+        case .soundMode: return [UInt8(value >> 8), UInt8(value & 255)]
         case .autoPowerOff: return [0, UInt8(value >> 8), UInt8(value & 255)]
         default: return [UInt8(value)]
         }
@@ -111,8 +111,8 @@ public enum Control: String, CaseIterable, Codable, Sendable {
             guard let mode = modes[tag] else { throw HeadsetError.invalid("Missing noise mode.") }
             value = Int(mode)
         case .soundMode:
-            guard payload.count == 2, payload[0] == 0 else { throw HeadsetError.invalid("Invalid sound mode.") }
-            value = Int(payload[1])
+            guard payload.count == 2 else { throw HeadsetError.invalid("Invalid sound mode.") }
+            value = Int(payload[0]) << 8 | Int(payload[1])
         case .autoPowerOff:
             guard payload.count == 3, payload[0] == 0 else { throw HeadsetError.invalid("Invalid power-off timer.") }
             value = Int(payload[1]) << 8 | Int(payload[2])
