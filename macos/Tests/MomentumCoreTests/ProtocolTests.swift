@@ -78,6 +78,7 @@ func expectThrows<T>(_ expression: @autoclosure () throws -> T, line: UInt = #li
         try checks.testNoiseTagsTimerAndInputLimits()
         try checks.testIdentityAndProtectedHost()
         try checks.testEqualizerAndUTF8Names()
+        try await runClientChecks()
         print("PASS 5 protocol checks: framing, checksum, command limits, peer identity and EQ/name validation")
     }
 }
