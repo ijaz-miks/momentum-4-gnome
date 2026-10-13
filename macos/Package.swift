@@ -9,7 +9,7 @@ let package = Package(
     targets: [
         .target(name: "MomentumCore"),
         .target(name: "MomentumFixtures", dependencies: ["MomentumCore"]),
-        .target(name: "MomentumBluetooth", dependencies: ["MomentumCore"], linkerSettings: [.linkedFramework("IOBluetooth")]),
+        .target(name: "MomentumBluetooth", dependencies: ["MomentumCore"], linkerSettings: [.linkedFramework("IOBluetooth"), .linkedFramework("CoreBluetooth")]),
         .executableTarget(name: "MomentumCoreChecks", dependencies: ["MomentumCore", "MomentumFixtures"], path: "Tests/MomentumCoreTests"),
     ],
     swiftLanguageModes: [.v5]

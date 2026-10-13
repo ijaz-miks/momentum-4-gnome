@@ -1,11 +1,17 @@
 import Foundation
 import IOBluetooth
+import CoreBluetooth
 import MomentumCore
 
-@MainActor public final class RFCOMMTransport: NSObject, GaiaTransport, IOBluetoothRFCOMMChannelDelegate, IOBluetoothDeviceAsyncCallbacks {
+@MainActor public final class RFCOMMTransport: NSObject, GaiaTransport, IOBluetoothRFCOMMChannelDelegate, IOBluetoothDeviceAsyncCallbacks, CBCentralManagerDelegate {
     public var selectedAddress = ""
+    public var accessStatus: [String: Int] {
+        ["authorization": CBManager.authorization.rawValue, "radioState": bluetooth?.state.rawValue ?? -1]
+    }
     public var address: String { Self.normalize(device?.addressString ?? "") }
     public var name: String { device?.name ?? "Momentum 4" }
+    private var bluetooth: CBCentralManager?
+    private var authorizing: CheckedContinuation<Void, Error>?
     private var device: IOBluetoothDevice?
     private var channel: IOBluetoothRFCOMMChannel?
     private var decoder = GaiaDecoder()
@@ -45,13 +51,46 @@ import MomentumCore
         }
         return candidates[0]
     }
+    private func ensureBluetoothAccess() async throws {
+        if CBManager.authorization == .denied || CBManager.authorization == .restricted {
+            throw HeadsetError.unavailable("Allow Bluetooth access for Momentum 4 Controls in System Settings, Privacy & Security.")
+        }
+        if bluetooth?.state == .poweredOn { return }
+        try await withTaskCancellationHandler(operation: {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                authorizing = continuation
+                armTimeout(seconds: 30, operation: "Bluetooth permission")
+                if let bluetooth { updateBluetoothState(bluetooth) }
+                else { bluetooth = CBCentralManager(delegate: self, queue: .main, options: [CBCentralManagerOptionShowPowerAlertKey: false]) }
+            }
+        }, onCancel: { Task { @MainActor [weak self] in self?.close() } })
+    }
+    private func updateBluetoothState(_ central: CBCentralManager) {
+        switch central.state {
+        case .poweredOn:
+            if let continuation = authorizing {
+                authorizing = nil; timer?.cancel(); timer = nil
+                continuation.resume()
+            }
+        case .poweredOff:
+            fail(HeadsetError.unavailable("Bluetooth is off. Turn it on in Bluetooth Settings."))
+        case .unauthorized:
+            if CBManager.authorization != .notDetermined {
+                fail(HeadsetError.unavailable("Allow Bluetooth access for Momentum 4 Controls in System Settings, Privacy & Security."))
+            }
+        case .unsupported:
+            fail(HeadsetError.unavailable("Bluetooth is unavailable on this Mac."))
+        default: break
+        }
+    }
+    nonisolated public func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        Task { @MainActor [weak self] in self?.updateBluetoothState(central) }
+    }
     public func open(reconnect: Bool) async throws {
         try Task.checkCancellation()
         if channel?.isOpen() == true { return }
-        guard opening == nil, querying == nil, response == nil else { throw HeadsetError.busy }
-        if IOBluetoothHostController.default()?.powerState.rawValue == 0 {
-            throw HeadsetError.unavailable("Bluetooth is off. Turn it on in Bluetooth Settings.")
-        }
+        guard authorizing == nil, opening == nil, querying == nil, response == nil else { throw HeadsetError.busy }
+        try await ensureBluetoothAccess()
         let selected = try select()
         if !selected.isConnected() && !reconnect {
             throw HeadsetError.unavailable("The headset is disconnected. Choose Connect to this Mac.")
@@ -61,7 +100,7 @@ import MomentumCore
         try await withTaskCancellationHandler(operation: {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 querying = continuation
-                armTimeout(seconds: deadline.timeIntervalSinceNow)
+                armTimeout(seconds: deadline.timeIntervalSinceNow, operation: "Bluetooth service discovery")
                 let status = selected.performSDPQuery(self, uuids: [Self.gaiaUUID])
                 if status != 0 { fail(Self.ioError(status)) }
             }
@@ -74,7 +113,7 @@ import MomentumCore
             }
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 opening = continuation
-                armTimeout(seconds: deadline.timeIntervalSinceNow)
+                armTimeout(seconds: deadline.timeIntervalSinceNow, operation: "Opening the headset control channel")
                 var opened: IOBluetoothRFCOMMChannel?
                 let status = selected.openRFCOMMChannelAsync(&opened, withChannelID: id, delegate: self)
                 channel = opened
@@ -101,7 +140,7 @@ import MomentumCore
                 response = continuation; request = frame; received = nil; writeFinished = false
                 let data = NSMutableData(data: encoded)
                 buffer = data
-                armTimeout(seconds: 3)
+                armTimeout(seconds: 3, operation: String(format: "Headset command %04x", frame.command))
                 let status = channel.writeAsync(data.mutableBytes, length: UInt16(data.length), refcon: nil)
                 if status != 0 { fail(Self.ioError(status)) }
             }
@@ -110,17 +149,20 @@ import MomentumCore
     private static func ioError(_ status: IOReturn) -> HeadsetError {
         .unavailable("Bluetooth operation failed (\(String(format: "0x%08x", UInt32(bitPattern: status)))).")
     }
-    private func armTimeout(seconds: TimeInterval) {
+    private func armTimeout(seconds: TimeInterval, operation: String) {
         timer?.cancel()
         timer = Task { [weak self] in
             do { try await Task.sleep(nanoseconds: UInt64(max(0, seconds) * 1_000_000_000)) }
             catch { return }
-            self?.fail(HeadsetError.timeout)
+            self?.fail(HeadsetError.unavailable("\(operation) timed out. Connect your headset and try again."))
             self?.close()
         }
     }
     private func fail(_ error: Error) {
         timer?.cancel(); timer = nil
+        let authorization = authorizing
+        authorizing = nil
+        authorization?.resume(throwing: error)
         let query = querying, open = opening, reply = response
         querying = nil; opening = nil; response = nil; request = nil; received = nil
         query?.resume(throwing: error); open?.resume(throwing: error); reply?.resume(throwing: error)
