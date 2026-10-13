@@ -26,7 +26,7 @@ import MomentumBluetooth
     override init() {
         let demo = CommandLine.arguments.contains("--demo") || CommandLine.arguments.contains("--self-test")
         store = HeadsetStore(demo: demo)
-        login = LoginItems(demo: demo || CommandLine.arguments.contains("--hardware-read"))
+        login = LoginItems(demo: demo || CommandLine.arguments.contains("--hardware-read") || CommandLine.arguments.contains("--hardware-test"))
         super.init()
     }
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -69,6 +69,10 @@ import MomentumBluetooth
         if let index = CommandLine.arguments.firstIndex(of: "--hardware-read"), CommandLine.arguments.count > index + 1 {
             let output = URL(fileURLWithPath: CommandLine.arguments[index + 1])
             Task { await runHardwareRead(self, output: output, connect: CommandLine.arguments.contains("--connect")) }
+        }
+        if let index = CommandLine.arguments.firstIndex(of: "--hardware-test"), CommandLine.arguments.count > index + 1 {
+            let output = URL(fileURLWithPath: CommandLine.arguments[index + 1])
+            Task { await runHardwareChecks(self, output: output) }
         }
         if let index = CommandLine.arguments.firstIndex(of: "--self-test"), CommandLine.arguments.count > index + 1 {
             let output = URL(fileURLWithPath: CommandLine.arguments[index + 1], isDirectory: true)
