@@ -16,6 +16,7 @@ import MomentumBluetooth
 
 @MainActor final class MenuDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     let store: HeadsetStore
+    let login: LoginItems
     let popover = NSPopover()
     private var status: NSStatusItem?
     var statusButton: NSStatusBarButton? { status?.button }
@@ -25,6 +26,7 @@ import MomentumBluetooth
     override init() {
         let demo = CommandLine.arguments.contains("--demo") || CommandLine.arguments.contains("--self-test")
         store = HeadsetStore(demo: demo)
+        login = LoginItems(demo: demo || CommandLine.arguments.contains("--hardware-read"))
         super.init()
     }
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -49,8 +51,21 @@ import MomentumBluetooth
         observers.append(center.addObserver(forName: NSWorkspace.didWakeNotification, object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.store.start() }
         })
+        login.bootstrap()
         if !store.isDemo { NSApp.activate(ignoringOtherApps: true) }
         store.start()
+        if let index = CommandLine.arguments.firstIndex(of: "--setup-status"), CommandLine.arguments.count > index + 1 {
+            let output = URL(fileURLWithPath: CommandLine.arguments[index + 1])
+            Task {
+                try? await Task.sleep(nanoseconds: 1_000_000_000)
+                login.refresh()
+                let result: [String: Any] = ["launchAtLoginEnabled": login.enabled,
+                    "loginApprovalRequired": login.needsApproval, "loginError": login.message ?? "",
+                    "bluetoothAccess": (store.transport as? RFCOMMTransport)?.accessStatus ?? [:],
+                    "menuBarItemPresent": statusButton != nil]
+                try? JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]).write(to: output)
+            }
+        }
         if let index = CommandLine.arguments.firstIndex(of: "--hardware-read"), CommandLine.arguments.count > index + 1 {
             let output = URL(fileURLWithPath: CommandLine.arguments[index + 1])
             Task { await runHardwareRead(self, output: output, connect: CommandLine.arguments.contains("--connect")) }
@@ -95,13 +110,14 @@ import MomentumBluetooth
     func openPreferences() {
         popover.performClose(nil)
         if preferences == nil {
-            let controller = NSHostingController(rootView: PreferencesView(store: store))
+            let controller = NSHostingController(rootView: PreferencesView(store: store, login: login))
             let window = NSWindow(contentViewController: controller)
             window.title = "Momentum 4 Settings"
             window.styleMask = [.titled, .closable, .miniaturizable]
             window.isReleasedWhenClosed = false
             window.center(); preferences = window
         }
+        login.refresh()
         NSApp.activate(ignoringOtherApps: true)
         preferences?.makeKeyAndOrderFront(nil)
     }
