@@ -15,6 +15,7 @@ import MomentumCore
     private var device: IOBluetoothDevice?
     private var channel: IOBluetoothRFCOMMChannel?
     private var decoder = GaiaDecoder()
+    private var connecting: CheckedContinuation<Void, Error>?
     private var opening: CheckedContinuation<Void, Error>?
     private var querying: CheckedContinuation<Void, Error>?
     private var response: CheckedContinuation<GaiaFrame, Error>?
@@ -89,19 +90,31 @@ import MomentumCore
     public func open(reconnect: Bool) async throws {
         try Task.checkCancellation()
         if channel?.isOpen() == true { return }
-        guard authorizing == nil, opening == nil, querying == nil, response == nil else { throw HeadsetError.busy }
+        guard authorizing == nil, connecting == nil, opening == nil, querying == nil, response == nil else { throw HeadsetError.busy }
         try await ensureBluetoothAccess()
         let selected = try select()
         if !selected.isConnected() && !reconnect {
             throw HeadsetError.unavailable("The headset is disconnected. Choose Connect to this Mac.")
         }
         device = selected
-        let deadline = Date().addingTimeInterval(10)
         try await withTaskCancellationHandler(operation: {
+            if !selected.isConnected() {
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                    connecting = continuation
+                    armTimeout(seconds: 25, operation: "Connecting the paired headset")
+                    let status = selected.openConnection(self, withPageTimeout: 0x8000, authenticationRequired: true)
+                    if status != 0 {
+                        if selected.isConnected() {
+                            connecting = nil; timer?.cancel(); timer = nil; continuation.resume()
+                        } else { fail(Self.ioError(status)) }
+                    }
+                }
+            }
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 querying = continuation
-                armTimeout(seconds: deadline.timeIntervalSinceNow, operation: "Bluetooth service discovery")
-                let status = selected.performSDPQuery(self, uuids: [Self.gaiaUUID])
+                armTimeout(seconds: 10, operation: "Bluetooth service discovery")
+                // Query all services, then select GAIA from the returned records.
+                let status = selected.performSDPQuery(self)
                 if status != 0 { fail(Self.ioError(status)) }
             }
             guard let service = selected.getServiceRecord(for: Self.gaiaUUID) else {
@@ -113,7 +126,7 @@ import MomentumCore
             }
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 opening = continuation
-                armTimeout(seconds: deadline.timeIntervalSinceNow, operation: "Opening the headset control channel")
+                armTimeout(seconds: 10, operation: "Opening the headset control channel")
                 var opened: IOBluetoothRFCOMMChannel?
                 let status = selected.openRFCOMMChannelAsync(&opened, withChannelID: id, delegate: self)
                 channel = opened
@@ -163,9 +176,9 @@ import MomentumCore
         let authorization = authorizing
         authorizing = nil
         authorization?.resume(throwing: error)
-        let query = querying, open = opening, reply = response
-        querying = nil; opening = nil; response = nil; request = nil; received = nil
-        query?.resume(throwing: error); open?.resume(throwing: error); reply?.resume(throwing: error)
+        let connect = connecting, query = querying, open = opening, reply = response
+        connecting = nil; querying = nil; opening = nil; response = nil; request = nil; received = nil
+        connect?.resume(throwing: error); query?.resume(throwing: error); open?.resume(throwing: error); reply?.resume(throwing: error)
     }
     private func completeResponse() {
         guard writeFinished, let received, let response else { return }
@@ -173,12 +186,21 @@ import MomentumCore
         self.response = nil; request = nil; self.received = nil; buffer = nil
         response.resume(returning: received)
     }
-    // Required device callbacks; this transport requests only SDP queries.
+    // Callbacks distinguish baseband connection from service discovery.
     nonisolated public func remoteNameRequestComplete(_ device: IOBluetoothDevice!, status: IOReturn) {}
-    nonisolated public func connectionComplete(_ device: IOBluetoothDevice!, status: IOReturn) {}
+    nonisolated public func connectionComplete(_ device: IOBluetoothDevice!, status: IOReturn) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            guard self.device === device, let continuation = self.connecting else { return }
+            self.connecting = nil; self.timer?.cancel(); self.timer = nil
+            if status == 0 && device.isConnected() { continuation.resume() }
+            else { continuation.resume(throwing: Self.ioError(status)) }
+        }
+    }
     nonisolated public func sdpQueryComplete(_ device: IOBluetoothDevice!, status: IOReturn) {
         Task { @MainActor [weak self] in
-            guard let self, self.device === device, let continuation = self.querying else { return }
+            guard let self else { return }
+            guard self.device === device, let continuation = self.querying else { return }
             self.querying = nil; self.timer?.cancel(); self.timer = nil
             if status == 0 { continuation.resume() } else { continuation.resume(throwing: Self.ioError(status)) }
         }
