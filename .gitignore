@@ -20,3 +20,11 @@ po/*.mo
 *.log
 .env
 .env.*
+
+# Native macOS build and local test output.
+/macos/.build/
+/macos/.swiftpm/
+/macos/builds/
+*.app/
+*.dSYM/
+.DS_Store
