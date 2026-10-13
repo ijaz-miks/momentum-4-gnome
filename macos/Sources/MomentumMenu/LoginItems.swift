@@ -12,12 +12,15 @@ import ServiceManagement
         guard !demo else { return }
         enabled = SMAppService.mainApp.status == .enabled
         needsApproval = SMAppService.mainApp.status == .requiresApproval
+        if SMAppService.mainApp.status == .notFound && message == nil {
+            message = "macOS could not find the login service. Try enabling Launch at login again."
+        }
     }
     func bootstrap() {
         guard !demo else { return }
         let defaults = UserDefaults.standard
         if defaults.object(forKey: "launchAtLoginRequested") == nil { defaults.set(true, forKey: "launchAtLoginRequested") }
-        if defaults.bool(forKey: "launchAtLoginRequested") && SMAppService.mainApp.status == .notRegistered {
+        if defaults.bool(forKey: "launchAtLoginRequested") && !enabled && !needsApproval {
             setEnabled(true)
         }
         refresh()
