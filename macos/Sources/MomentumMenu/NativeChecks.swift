@@ -108,6 +108,25 @@ struct NativeCheckFailure: Error, CustomStringConvertible {
         try nativeAssert(store.snapshot?.values[.lowLatency] == nil, "Unsupported feature did not become unavailable")
         checks.append("Verified rename and unsupported feature handling")
 
+        simulation.rejectedSoundModes[2] = [0x82]
+        store.set(.soundMode, to: 2); try await waitForIdle(store)
+        try nativeAssert(!store.soundModeSelectable(2) && store.snapshot?.values[.soundMode] == 1,
+            "Rejected sound mode was not disabled or changed the confirmed selection")
+        let modeWrites = simulation.frames.filter { $0.command == 0x0803 }.count
+        store.set(.soundMode, to: 2)
+        try await Task.sleep(nanoseconds: 100_000_000)
+        try nativeAssert(simulation.frames.filter { $0.command == 0x0803 }.count == modeWrites, "Unavailable mode was written again")
+        store.refresh(); try await waitForIdle(store)
+        try nativeAssert(!store.soundModeSelectable(2), "A refresh forgot firmware rejection")
+        simulation.values[.soundMode] = 2
+        store.refresh(); try await waitForIdle(store)
+        try nativeAssert(store.soundModeSelectable(2), "Live selection did not supersede the rejection observation")
+        simulation.rejectedSoundModes[0] = [0x81]
+        store.set(.soundMode, to: 0); try await waitForIdle(store)
+        try nativeAssert(store.soundModeSelectable(0) && store.error?.contains("not been configured") == true,
+            "An unconfigured mode was treated as permanently unsupported")
+        checks.append("Sound-mode firmware rejections disable only unsupported choices and preserve confirmed state")
+
         for scheme in [ColorScheme.light, .dark] {
             for page in ControlPage.allCases {
                 store.page = page

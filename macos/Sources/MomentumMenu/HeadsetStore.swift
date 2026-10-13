@@ -15,6 +15,13 @@ struct SavedPreset: Codable, Identifiable, Equatable {
     let gains: [Int]
 }
 
+/// Local firmware-specific observations, learned only from explicit user writes.
+private struct SoundModeSupport: Codable {
+    let address: String
+    let firmware: String
+    var unavailable: Set<Int>
+}
+
 @MainActor final class HeadsetStore: ObservableObject {
     enum Job {
         case refresh(Bool), setting(Control, Int), band(Int, Int), profile([Int]), peer(Peer, Bool), rename(String)
@@ -41,6 +48,7 @@ struct SavedPreset: Codable, Identifiable, Equatable {
     @Published private(set) var previews: [String: Int] = [:]
     @Published private(set) var presets: [SavedPreset] = []
     @Published private(set) var removedPreset: SavedPreset?
+    @Published private(set) var unavailableSoundModes: Set<Int> = []
     @Published var page: ControlPage = .devices
     @Published var selectedPreset = ""
     @Published var presetName = ""
@@ -104,7 +112,37 @@ struct SavedPreset: Codable, Identifiable, Equatable {
     func refresh(reconnect: Bool = false) { enqueue(.refresh(reconnect)) }
     func set(_ control: Control, to value: Int) {
         guard ready, control.range.contains(value), snapshot?.values[control] != nil else { return }
+        if control == .soundMode && !soundModeSelectable(value) { return }
         enqueue(.setting(control, value))
+    }
+    func soundModeSelectable(_ mode: Int) -> Bool {
+        !unavailableSoundModes.contains(mode) && (mode != 3 || snapshot?.personalizationState == 2)
+    }
+    func recordSoundModeRejection(_ mode: Int, error: Error, snapshot: HeadsetSnapshot) {
+        guard case HeadsetError.rejected(let vendor, let command, let bytes) = error,
+              vendor == GaiaFrame.sennheiser, command == Control.soundMode.writeCommand,
+              bytes.first == 0x82, Control.soundMode.range.contains(mode) else { return }
+        updateSoundModeSupport(snapshot)
+        unavailableSoundModes.insert(mode)
+        persistSoundModeSupport(snapshot)
+    }
+    private func updateSoundModeSupport(_ snapshot: HeadsetSnapshot) {
+        var modes: Set<Int> = []
+        if let data = defaults?.data(forKey: "soundModeSupport"),
+           let saved = try? JSONDecoder().decode(SoundModeSupport.self, from: data),
+           saved.address == snapshot.address, saved.firmware == snapshot.firmware {
+            modes = saved.unavailable.filter { Control.soundMode.range.contains($0) }
+        }
+        if isDemo, self.snapshot?.address == snapshot.address, self.snapshot?.firmware == snapshot.firmware {
+            modes = unavailableSoundModes
+        }
+        if let current = snapshot.values[.soundMode] { modes.remove(current) }
+        unavailableSoundModes = modes
+        persistSoundModeSupport(snapshot)
+    }
+    private func persistSoundModeSupport(_ snapshot: HeadsetSnapshot) {
+        let observation = SoundModeSupport(address: snapshot.address, firmware: snapshot.firmware, unavailable: unavailableSoundModes)
+        if let data = try? JSONEncoder().encode(observation) { defaults?.set(data, forKey: "soundModeSupport") }
     }
     func shown(_ control: Control) -> Int? { previews[control.rawValue] ?? snapshot?.values[control] }
     func shownBand(_ band: Int) -> Int { previews["eq\(band)"] ?? snapshot?.equalizer?.gains[band] ?? 0 }
@@ -190,13 +228,20 @@ struct SavedPreset: Codable, Identifiable, Equatable {
                     guard self.epoch == generation else { return }
                     if self.headsetName.isEmpty || self.headsetName == self.snapshot?.name { self.headsetName = snapshot.name }
                     self.snapshot = snapshot; self.stale = false; self.readError = nil
+                    self.updateSoundModeSupport(snapshot)
                     if job.key != "refresh" { self.writeError = nil }
                 } catch {
                     guard self.epoch == generation else { return }
                     if job.key == "refresh" { self.readError = error.localizedDescription; self.stale = self.snapshot != nil }
                     else {
+                        if case .setting(.soundMode, let mode) = job, let snapshot = self.snapshot {
+                            self.recordSoundModeRejection(mode, error: error, snapshot: snapshot)
+                        }
                         self.writeError = error.localizedDescription
-                        do { self.snapshot = try await self.client.snapshot(); self.stale = false }
+                        do {
+                            let refreshed = try await self.client.snapshot()
+                            self.snapshot = refreshed; self.updateSoundModeSupport(refreshed); self.stale = false
+                        }
                         catch { self.stale = self.snapshot != nil; self.readError = error.localizedDescription; self.jobs.removeAll() }
                     }
                 }

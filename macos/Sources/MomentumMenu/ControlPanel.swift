@@ -107,8 +107,8 @@ struct ControlPanel: View {
         Picker(control.title, selection: Binding(get: { store.shown(control) ?? -1 }, set: { store.set(control, to: $0) })) {
             if store.shown(control) == nil { Text("Unavailable").tag(-1) }
             ForEach(values.map { Choice(id: $0.0, title: $0.1) }) { option in
-                Text(option.title).tag(option.id)
-                    .disabled(control == .soundMode && option.id == 3 && store.snapshot?.personalizationState != 2)
+                Text(option.title + (control == .soundMode && store.unavailableSoundModes.contains(option.id) ? " (Unavailable)" : ""))
+                    .tag(option.id).disabled(control == .soundMode && !store.soundModeSelectable(option.id))
             }
             if let actual = store.shown(control), !values.contains(where: { $0.0 == actual }) { Text("\(actual)").tag(actual) }
         }.pickerStyle(.menu).disabled(!store.ready || store.snapshot?.values[control] == nil)
