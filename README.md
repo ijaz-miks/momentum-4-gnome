@@ -1,8 +1,15 @@
 # Momentum 4 Controls
 
-Native GNOME Shell controls for Sennheiser Momentum 4, using this checkout's
-bundled momentumctl 0.2.0 CLI. UUID: momentum4@ijaz-miks.github.io.
-Supported GNOME Shell: 50.
+Native desktop controls for Sennheiser Momentum 4.
+
+| Desktop | Implementation | Setup |
+| --- | --- | --- |
+| Ubuntu / GNOME Shell 50 | GNOME extension with the bundled momentumctl 0.2.0 CLI | Instructions below |
+| macOS 14 and newer | Native SwiftUI/AppKit menu bar app with direct Bluetooth control | [macOS setup](macos/README.md) |
+
+The GNOME extension UUID is momentum4@ijaz-miks.github.io.
+The macOS app provides the same headset controls, including multipoint and
+source switching, with native appearance and launch-at-login support.
 
 Custom widgets use explicit Momentum 4 GType names because all extensions
 share one Shell process. This avoids collisions with other extensions that

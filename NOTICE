@@ -1,4 +1,7 @@
-Momentum 4 Controls is an original GJS implementation.
+Momentum 4 Controls includes original GJS and Swift implementations.
+The macOS app uses system SwiftUI, AppKit, IOBluetooth, CoreBluetooth and
+ServiceManagement frameworks. Its application icon is original vector artwork
+rendered locally; interface symbols are provided by the system.
 
 Backend: momentumctl, MIT licensed, https://codeberg.org/galen/momentumctl
 The extended Rust backend is included under momentumctl/, based on upstream
