@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "device": {
+    "address": "00:11:22:33:44:55",
+    "name": "MOMENTUM 4",
+    "firmware": "3.38.3",
+    "codec": 255,
+    "wearState": 2,
+    "promptLanguage": 0,
+    "availablePromptLanguages": [
+      0
+    ],
+    "personalizationState": 0
+  },
+  "settings": {
+    "adaptive": false,
+    "anc": true,
+    "antiWind": "auto",
+    "autoAnswer": false,
+    "battery": 82,
+    "comfortCall": false,
+    "onHeadDetection": true,
+    "smartPause": true,
+    "transparency": 35,
+    "multipoint": true,
+    "bassBoost": false,
+    "touchLock": false,
+    "lowLatency": false,
+    "sidetone": 2,
+    "promptMode": 2,
+    "audioPriority": 0,
+    "soundMode": 1,
+    "autoPowerOff": 900,
+    "eq0": 0,
+    "eq1": 0,
+    "eq2": 0,
+    "eq3": 0,
+    "eq4": 0
+  },
+  "connections": {
+    "capacity": 2,
+    "ownIndex": 0,
+    "peers": [
+      {
+        "index": 0,
+        "priority": 1,
+        "connected": true,
+        "name": "Ubuntu workstation"
+      },
+      {
+        "index": 1,
+        "priority": 0,
+        "connected": true,
+        "name": "Samsung phone"
+      },
+      {
+        "index": 2,
+        "priority": 2,
+        "connected": false,
+        "name": "Windows PC"
+      },
+      {
+        "index": 3,
+        "priority": 3,
+        "connected": false,
+        "name": "Smart TV"
+      },
+      {
+        "index": 4,
+        "priority": 4,
+        "connected": false,
+        "name": "Other laptop"
+      }
+    ]
+  },
+  "equalizer": {
+    "minGain": -60,
+    "maxGain": 60,
+    "gains": [
+      0,
+      0,
+      0,
+      0,
+      0
+    ]
+  },
+  "unsupported": {}
+}

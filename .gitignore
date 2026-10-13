@@ -5,3 +5,18 @@ __pycache__/
 *.shell-extension.zip
 schemas/gschemas.compiled
 po/*.mo
+
+# Bundled backend build output.
+/momentumctl/target/
+
+# Private Android/Bluetooth evidence and local credentials.
+/captures/
+/diagnostics/
+*.apk
+*.aab
+*.btsnoop
+*.pcap
+*.pcapng
+*.log
+.env
+.env.*

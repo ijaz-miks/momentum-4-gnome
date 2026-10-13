@@ -41,6 +41,15 @@ GLib.timeout_add(GLib.PRIORITY_DEFAULT, 500, () => {
         entry.emit('entry-activated');
         if (!widgets.some(w => w instanceof Gtk.Label && w.get_text().includes('for example <Super>m')))
             throw new Error('Shortcut description markup was not escaped');
+        const address = widgets.filter(w => w instanceof Adw.EntryRow).find(w => w.title.startsWith('Headset Bluetooth address'));
+        if (!address) throw new Error('Missing headset selector');
+        address.text = 'invalid';
+        address.emit('apply');
+        if (settings.get_string('headset-address') !== '') throw new Error('Invalid headset address was applied');
+        address.text = '00:11:22:33:44:55';
+        address.emit('apply');
+        if (settings.get_string('headset-address') !== '00:11:22:33:44:55') throw new Error('Headset address was not applied');
+        address.text = ''; address.emit('apply');
         const shortcut = widgets.filter(w => w instanceof Adw.EntryRow).find(w => w.title === 'Shortcut');
         if (!shortcut) throw new Error('Missing shortcut row');
         shortcut.text = 'not a shortcut<';

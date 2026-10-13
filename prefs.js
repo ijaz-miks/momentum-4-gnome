@@ -66,6 +66,19 @@ export default class MomentumPreferences extends ExtensionPreferences {
             });
         });
         describe();
+        const address = new Adw.EntryRow({title: _('Headset Bluetooth address (empty for automatic selection)'),
+            text: settings.get_string('headset-address'), show_apply_button: true});
+        group.add(address);
+        const applyAddress = () => {
+            const value = address.text.trim();
+            if (value && !/^(?:[0-9a-f]{2}:){5}[0-9a-f]{2}$/i.test(value)) {
+                address.add_css_class('error'); return;
+            }
+            address.remove_css_class('error');
+            if (value !== settings.get_string('headset-address')) settings.set_string('headset-address', value.toUpperCase());
+        };
+        address.connect('apply', applyAddress);
+        address.connect('entry-activated', applyAddress);
         const battery = new Adw.SwitchRow({title: _('Show battery percentage in the top bar'), subtitle: _('Shown only after a valid status read. When off, the headset is not polled while the menu is closed.')});
         group.add(battery);
         settings.bind('show-battery-percentage', battery, 'active', Gio.SettingsBindFlags.DEFAULT);

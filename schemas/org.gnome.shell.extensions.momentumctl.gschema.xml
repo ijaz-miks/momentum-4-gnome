@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
   <schema id="org.gnome.shell.extensions.momentumctl" path="/org/gnome/shell/extensions/momentumctl/">
+    <key name="equalizer-presets" type="a{sai}">
+      <default>{}</default>
+      <summary>User-saved equalizer presets in tenths of a decibel</summary>
+      <description>Saved only on explicit user request and applied only when selected. They are never automatically replayed.</description>
+    </key>
+    <key name="headset-address" type="s">
+      <default>''</default>
+      <summary>Selected headset Bluetooth address</summary>
+      <description>Empty selects the only paired Momentum 4 headset. Source devices are selected from the headset's own paired-device list.</description>
+    </key>
     <key name="cli-path" type="s">
       <default>''</default>
       <summary>Absolute momentumctl executable filename</summary>

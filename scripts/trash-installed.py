@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Recoverably move only the installed local Momentum extension for a later update.
+"""Recoverably move the installed local Momentum extension or CLI for an update.
 
 Run only after disabling the extension. Never run during ordinary packaging/tests.
 """
@@ -19,6 +19,7 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--cli', action='store_true', help='Move only ~/.cargo/bin/momentumctl instead of the extension')
 parser.add_argument('--reason', required=True)
 parser.add_argument('--log', type=Path, required=True, help='Append-only TSV removal log')
 args = parser.parse_args()
@@ -26,18 +27,18 @@ home = Path.home()
 data = Path(os.environ.get('XDG_DATA_HOME', str(home / '.local/share')))
 if not data.is_absolute() or not args.log.is_absolute() or any(c in str(data) + args.reason for c in '\t\r\n\x00'):
     parser.error('Use absolute data and log paths and a plain single-line reason')
-target = Path(os.path.abspath(data / 'gnome-shell/extensions/momentum4@ijaz-miks.github.io'))
+target = Path(os.path.abspath(home / '.cargo/bin/momentumctl' if args.cli else data / 'gnome-shell/extensions/momentum4@ijaz-miks.github.io'))
 if any(c in str(target) for c in '$*?[]{}'):
     parser.error('Unresolved variables or glob syntax are not allowed')
 before = target.lstat()  # Never dereference the final symbolic link.
-if not (stat.S_ISDIR(before.st_mode) or stat.S_ISLNK(before.st_mode)):
-    parser.error('Expected an extension directory or final symbolic link')
+if not (stat.S_ISLNK(before.st_mode) or (stat.S_ISREG(before.st_mode) if args.cli else stat.S_ISDIR(before.st_mode))):
+    parser.error('Expected the verified installed target type or a final symbolic link')
 mount = json.loads(subprocess.check_output(['findmnt', '--json', '--target', str(target.parent),
                                           '--output', 'TARGET,SOURCE,FSTYPE'], text=True))['filesystems'][0]
 mount_root = Path(mount['target'])
 if target in [Path('/'), Path('/home'), home, mount_root] or os.path.ismount(target):
     parser.error('Refusing a broad, critical or mount-root target')
-kind = 'symbolic-link' if stat.S_ISLNK(before.st_mode) else 'directory'
+kind = 'symbolic-link' if stat.S_ISLNK(before.st_mode) else 'regular-file' if args.cli else 'directory'
 transaction = uuid.uuid4().hex
 retained = Path(tempfile.mkdtemp(prefix='momentumctl-trash-inspection-'))
 inspection = {'original_path': str(target), 'type': kind, 'uid': before.st_uid,

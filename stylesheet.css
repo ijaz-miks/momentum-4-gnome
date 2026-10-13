@@ -1,2 +1,18 @@
 /* Layout only. Colours, switches, focus and menus use the active Shell theme. */
 .momentumctl-menu { min-width: 25em; }
+
+/* Compact Momentum's panel button; retain the headphone glyph inside a circle. */
+#panel IjazMomentum4PanelIndicator.panel-button {
+    -natural-hpadding: 4px;
+    -minimum-hpadding: 4px;
+}
+#panel IjazMomentum4PanelIndicator.panel-button .panel-status-menu-box {
+    spacing: 0;
+}
+#panel IjazMomentum4PanelIndicator.panel-button .system-status-icon {
+    icon-size: 10px;
+    padding: 2px;
+    margin: 0;
+    border: 1px solid #f2f2f2;
+    border-radius: 999px;
+}

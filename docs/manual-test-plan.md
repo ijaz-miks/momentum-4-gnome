@@ -70,3 +70,22 @@ default 100% light presentation.
 `gjs -m tests/hardware-read.js [path]` performs one read-only status call with
 the same 10-second executor and prints exit, latency and the validated
 snapshot, or the concrete failure. No writes are part of automated acceptance.
+
+
+## Extended Smart Control acceptance
+
+- Pair Windows and verify its paired-list entry.
+- Switch from the phone to Windows with both slots occupied. Ubuntu remains
+  connected, the phone disconnects and Windows connects.
+- Switch to an unavailable peer and verify previous-source restoration,
+  visible errors and no blind setter retry.
+- Disconnect/reconnect the non-host peer; this computer's row is protected.
+- Disable multipoint, wait for recovery and confirm one slot and disabled
+  state. Enable it and confirm two slots.
+- Change EQ bands, including negative gains and drag/keyboard controls.
+  Save/apply a preset, remove it and undo. Restarting never applies it.
+- Change each supported sound/device setting, verify readback, then restore.
+- Rename and restore the headset. Invalid names do not send writes.
+- Validate headset-address preferences and selected-headset BlueZ observation.
+- Test short monitors, 200 percent scale, keyboard focus and disabling while
+  editing. Unsupported controls remain unavailable.

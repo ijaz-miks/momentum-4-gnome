@@ -12,6 +12,7 @@ import {FIELDS} from '../lib/commands.js';
 import {diagnostic} from '../lib/headsetController.js';
 import {_, N_, format} from '../lib/i18n.js';
 import {TransparencyRow} from './transparencyRow.js';
+import {ExtraControls} from './extraControls.js';
 
 const LOW_BATTERY = 15;
 const MODE_LABELS = {off: N_('Off'), auto: N_('Auto'), max: N_('Max')};
@@ -24,21 +25,21 @@ function batteryIcon(level) {
 
 // The stock items close the whole menu on click or Enter. Settings rows stay open
 // so several changes, and the result of Refresh, remain visible.
-const StaySwitchItem = GObject.registerClass(class StaySwitchItem extends PopupMenu.PopupSwitchMenuItem {
+const StaySwitchItem = GObject.registerClass({GTypeName: 'IjazMomentum4StaySwitchItem'}, class StaySwitchItem extends PopupMenu.PopupSwitchMenuItem {
     activate(_event) {
         if (this._switch.mapped)
             this.toggle();
     }
 });
 
-const StayMenuItem = GObject.registerClass({Signals: {'triggered': {}}},
+const StayMenuItem = GObject.registerClass({GTypeName: 'IjazMomentum4StayMenuItem', Signals: {'triggered': {}}},
 class StayMenuItem extends PopupMenu.PopupMenuItem {
     activate(_event) {
         this.emit('triggered');
     }
 });
 
-export const Indicator = GObject.registerClass(class Indicator extends PanelMenu.Button {
+export const Indicator = GObject.registerClass({GTypeName: 'IjazMomentum4PanelIndicator'}, class Indicator extends PanelMenu.Button {
     _init(controller, settings, openPreferences) {
         super._init(0.5, _('Momentum 4 Controls'));
         this.controller = controller;
@@ -100,6 +101,10 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
         this.controls.addMenuItem(this.antiWind);
         this.controls.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(_('Behaviour')));
         for (const key of ['smartPause', 'onHeadDetection', 'autoAnswer', 'comfortCall']) addSwitch(key);
+        this.extras = new ExtraControls(controller, settings, connect);
+        this.controls.addMenuItem(this.extras.connections, 0);
+        for (const section of [this.extras.sound, this.extras.device, this.extras.information])
+            this.controls.addMenuItem(section);
         this.detail = new PopupMenu.PopupMenuItem('', {reactive: false, can_focus: false});
         this.detail.label.clutter_text.line_wrap = true;
         this.detail.label.clutter_text.ellipsize = 0;
@@ -126,9 +131,17 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
         const fit = () => {
             if (!this.get_stage()) return;
             const monitor = Main.layoutManager.findMonitorForActor(this) ?? Main.layoutManager.primaryMonitor;
-            if (monitor) this.menu.box.set_style(`max-height: ${Math.max(240, monitor.height - Main.panel.height - 48)}px; max-width: ${Math.max(240, monitor.width - 48)}px;`);
+            if (monitor) {
+                const scale = St.ThemeContext.get_for_stage(global.stage).scale_factor;
+                const height = Math.max(240, monitor.height - Main.panel.height - 48);
+                this.menu.box.set_style('max-height: ' + Math.round(height / scale) + 'px; max-width: ' +
+                    Math.round(Math.max(240, monitor.width - 48) / scale) + 'px;');
+                // The scroll view must have its own height constraint. Its content
+                // now includes device, EQ and settings sections with a large minimum.
+                this.scroll.set_style('min-height: 0; max-height: ' + Math.round(Math.max(160, height - 300) / scale) + 'px;');
+            }
         };
-        connect(this.menu, 'open-state-changed', (_menu, open) => { fit(); controller.setMenuOpen(open); });
+        connect(this.menu, 'open-state-changed', (_menu, open) => { fit(); if (!open) this.extras.commitPreviews(); controller.setMenuOpen(open); });
         connect(Main.layoutManager, 'monitors-changed', fit);
         connect(global.stage, 'notify::key-focus', () => {
             const focused = global.stage.get_key_focus();
@@ -198,6 +211,7 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
                 item.syncSensitive();
             }
             this.transparency.render(state, sensitive);
+            this.extras.render(state, sensitive);
             const mode = this._shown(state, 'antiWind');
             if (!mode) this.antiWind.label.text = _('Anti-wind: Unavailable');
             else if (state.inFlight?.key === 'antiWind') this.antiWind.label.text = format(_('Anti-wind: %s (updating)'), _(MODE_LABELS[mode]));
@@ -219,7 +233,7 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
             this.dismiss.visible = Boolean(state.writeError);
             this.refreshItem.sensitive = idle;
             const controls = [...this.switches.values(), ...this.modes.values(), this.refreshItem, this.dismiss,
-                this.transparency.minus, this.transparency.slider, this.transparency.plus];
+                this.transparency.minus, this.transparency.slider, this.transparency.plus, ...this.extras.focusables];
             if (!sensitive && !this.busyFocus && controls.includes(focusBefore))
                 this.busyFocus = focusBefore;
             else if (sensitive && this.busyFocus) {
@@ -234,6 +248,7 @@ export const Indicator = GObject.registerClass(class Indicator extends PanelMenu
         if (this.dead) return;
         this.dead = true;
         this.unsubscribe?.();
+        this.extras?.destroy();
         for (const [object, id] of this.signals ?? []) object.disconnect(id);
         this.signals = [];
         // Pop the native modal grab and detach chrome while the popup is alive.

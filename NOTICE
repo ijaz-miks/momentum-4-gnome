@@ -1,8 +1,16 @@
 Momentum 4 Controls is an original GJS implementation.
 
 Backend: momentumctl, MIT licensed, https://codeberg.org/galen/momentumctl
-The extension only runs the installed momentumctl executable. No Rust source
-is included.
+The extended Rust backend is included under momentumctl/, based on upstream
+commit e86f3e2. Its original MIT license and Galen Abell copyright notice are
+preserved in momentumctl/LICENSE. The extension runs its installed executable.
+
+Protocol research references:
+https://github.com/Oein/sennheiser-desktop-client/blob/main/PROTOCOL.md
+https://github.com/Ariazonaa/momentum4-control
+https://github.com/Zhengyang-Liu/m4-companion
+Only protocol facts and independently implemented control code are included.
+Android application packages, disassembly and Bluetooth captures are excluded.
 
 Behaviour reference: omarchy-momentumctl, Apache-2.0 licensed,
 https://github.com/timmo001/omarchy-momentumctl

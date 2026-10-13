@@ -28,10 +28,19 @@ mock = root / 'mock/momentumctl'
 with (source / 'tests/mock-momentumctl.py').open('rb') as inp, mock.open('xb') as out:
     shutil.copyfileobj(inp, out)
 mock.chmod(0o755)
+helper = root / 'helper'
+helper.mkdir()
+wrapper = helper / 'gnome-shell-perf-helper'
+with wrapper.open('x') as stream:
+    stream.write('#!/bin/sh\nexec /usr/libexec/gnome-shell-perf-helper --idle-timeout=120 "$@"\n')
+wrapper.chmod(0o755)
+(root / 'mock/fixtures').mkdir()
+with (source / 'tests/fixtures/inspection.json').open('rb') as inp, (root / 'mock/fixtures/inspection.json').open('xb') as out:
+    shutil.copyfileobj(inp, out)
 env = dict(os.environ)
 env.update(XDG_DATA_HOME=str(root / 'data'), XDG_CONFIG_HOME=str(root / 'config'),
            XDG_CACHE_HOME=str(root / 'cache'), XDG_RUNTIME_DIR=str(runtime),
-           GSETTINGS_BACKEND='keyfile', GNOME_SHELL_SESSION_MODE='user',
+           GSETTINGS_BACKEND='keyfile', GNOME_SHELL_SESSION_MODE='user', GNOME_SHELL_BUILDDIR=str(helper),
            MOMENTUMCTL_MOCK_DIR=str(root / 'mock'), MOMENTUMCTL_TEST_MOCK=str(mock),
            MOMENTUMCTL_TEST_OUTPUT=str(root), WAYLAND_DISPLAY='momentumctl-test-display',
            LIBGL_ALWAYS_SOFTWARE='1', NO_AT_BRIDGE='1', GIO_USE_VFS='local', GTK_USE_PORTAL='0')

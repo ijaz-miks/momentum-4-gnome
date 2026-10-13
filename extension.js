@@ -22,6 +22,7 @@ export default class MomentumExtension extends Extension {
             setTranslator(text => this.gettext(text));
             this.settings = this.getSettings();
             this.settingsSignal = this.settings.connect('changed::cli-path', () => this._replace());
+            this.addressSignal = this.settings.connect('changed::headset-address', () => this._replace());
             this.batterySignal = this.settings.connect('changed::show-battery-percentage',
                 () => this.controller?.setPollWhileClosed(this.settings.get_boolean('show-battery-percentage')));
             this.link = 'unknown';
@@ -30,6 +31,7 @@ export default class MomentumExtension extends Extension {
                 this.link = link;
                 this.controller?.setLinkState(link);
             });
+            this.bluez.setAddress(this.settings.get_string('headset-address'));
             this.bluez.start();
             Main.wm.addKeybinding('momentum4-toggle-menu', this.settings, Meta.KeyBindingFlags.NONE,
                 // POPUP lets the same shortcut close the open menu, which holds a modal grab.
@@ -56,12 +58,14 @@ export default class MomentumExtension extends Extension {
     }
     _replace() {
         const epoch = this.epoch;
+        this.bluez?.setAddress(this.settings.get_string('headset-address'));
         if (this.controller) drain = Promise.all([drain, this.controller.stop()]).then(() => {});
         this.indicator?.destroy();
         const executor = new CliExecutor({logFailure: r => console.warn(
             `Momentum CLI operation ${r.operationId}: exit=${r.exitCode}, signal=${r.signal}, timeout=${r.timedOut}, streamError=${Boolean(r.error)}, elapsed=${Math.round(r.elapsedMs)}ms`)});
         this.controller = new HeadsetController({executor, scheduler, resolve: resolveExecutable,
-            cliPath: this.settings.get_string('cli-path'),
+            cliPath: this.settings.get_string('cli-path'), extended: true,
+            headsetAddress: this.settings.get_string('headset-address'),
             pollWhileClosed: this.settings.get_boolean('show-battery-percentage'),
             onWake: () => { this.sleeping = false; }});
         const controller = this.controller;
@@ -81,10 +85,10 @@ export default class MomentumExtension extends Extension {
     disable() {
         this.enabled = false;
         this.epoch = (this.epoch ?? 0) + 1;
-        for (const id of [this.settingsSignal, this.batterySignal]) {
+        for (const id of [this.settingsSignal, this.batterySignal, this.addressSignal]) {
             if (id) this.settings.disconnect(id);
         }
-        this.settingsSignal = this.batterySignal = 0;
+        this.settingsSignal = this.batterySignal = this.addressSignal = 0;
         if (this.keybinding) Main.wm.removeKeybinding('momentum4-toggle-menu');
         this.keybinding = false;
         this.bluez?.stop();

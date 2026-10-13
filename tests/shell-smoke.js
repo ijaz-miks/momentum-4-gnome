@@ -1,9 +1,17 @@
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
 import GLib from 'gi://GLib';
+import GObject from 'gi://GObject';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+import * as Scripting from 'resource:///org/gnome/shell/ui/scripting.js';
+
+// Other extensions can use identical module paths and class names. Their
+// generated GTypes share Shell's process, so reserve those names before loading.
+const foreignWidgetTypes = ['Gjs_ui_indicator_Indicator', 'Gjs_ui_indicator_StaySwitchItem',
+    'Gjs_ui_indicator_StayMenuItem', 'Gjs_ui_extraControls_Action', 'Gjs_ui_extraControls_Switch']
+    .map(GTypeName => GObject.registerClass({GTypeName}, class ForeignWidget extends GObject.Object {}));
 
 export const METRICS = {};
 const uuid = 'momentum4@ijaz-miks.github.io';
@@ -52,6 +60,7 @@ async function configureScale() {
 // Overview in the pick tree, so it would receive them instead of the menu.
 async function click(item) {
     assert(item.mapped && item.reactive, `${item} is not clickable`);
+    item.grab_key_focus();
     item._clickGesture.emit('recognize');
     await sleep(120);
 }
@@ -76,20 +85,27 @@ function fakeBluez() {
         iface.emit_property_changed('Connected', GLib.Variant.new_boolean(value));
     }};
 }
-const statusReads = () => events().filter(e => e.phase === 'start' && e.args[0] === 'status').length;
+const statusReads = () => events().filter(e => e.phase === 'start' && ['status', 'inspect'].includes(e.args[0])).length;
 async function ready(extension) {
     await until(() => extension.controller?.ready && extension.controller.current.activity === 'idle', 'Controller did not become ready');
 }
 let running = null;
-// Start directly through the automation hook. The performance helper is not needed
-// for widget tests and can stall before the headless session's startup completes.
+let standardDriver = false;
+// The standard automation driver owns startup and shutdown. The retained
+// harness increases the real helper's idle timeout to cover the extended suite.
 export function init() {
-    sleep(1500).then(() => run()).then(() => global.context.terminate(), e => {
-        logError(e, 'Momentum Shell test');
-        global.context.terminate();
-    });
+    // The retained harness owns all helper processes. The performance helper
+    // can exit while widget tests continue, so the driver must not issue a
+    // late Exit call to a vanished service.
+    Scripting._getPerfHelper().then(helper => { helper._autoExit = false; }).catch(logError);
+    sleep(1500).then(async () => {
+        running ??= execute();
+        await running;
+        if (!standardDriver) global.context.terminate();
+    }).catch(e => { logError(e, 'Momentum Shell test'); global.context.terminate(); });
 }
 export function run() {
+    standardDriver = true;
     running ??= execute();
     return running;
 }
@@ -101,6 +117,11 @@ async function execute() {
         const monitorScale = await configureScale();
         await ready(extension);
         checks.push('Packaged extension enabled using explicit mock');
+        assert(foreignWidgetTypes.every(type => GObject.type_name(type.$gtype).startsWith('Gjs_ui_')),
+            'Foreign extension widget names were not reserved');
+        assert(GObject.type_name(extension.indicator.constructor.$gtype) === 'IjazMomentum4PanelIndicator',
+            'Panel widget must use a globally unique GType name');
+        checks.push('Extension starts alongside conflicting widget names from other extensions');
         let ui = extension.indicator;
         ui.menu.open(); await sleep(250);
         assert(ui.switches.size === 6 && ui.modes.size === 3 && ui.battery.text === '82%', 'Missing controls or battery');
@@ -108,7 +129,7 @@ async function execute() {
         ui.render({...extension.controller.current, snapshot: Object.freeze({...extension.controller.current.snapshot, battery: 12})});
         assert(ui.status.label.text.endsWith('Battery low') && ui.header._icon.icon_name === 'battery-level-10-symbolic', 'Low battery not shown');
         ui.render(extension.controller.current);
-        assert(ui.scroll.height <= Main.layoutManager.primaryMonitor.height, 'Menu exceeds monitor');
+        assert(ui.scroll.height <= Main.layoutManager.primaryMonitor.height, 'Menu exceeds monitor: ' + JSON.stringify({scroll:ui.scroll.height, monitor:Main.layoutManager.primaryMonitor.height, box:ui.menu.box.height}));
         const original = extension.controller.current;
         const start = writes();
         const changed = {...original.snapshot, transparency: 67};
@@ -140,6 +161,73 @@ async function execute() {
         }
         ui.antiWind.setSubmenuShown(false); await sleep(250);
         checks.push('All six switches and anti-wind off/auto/max verified through mock CLI');
+        assert(extension.controller.current.snapshot._extended, 'Extended snapshot was not loaded');
+        const extras = ui.extras;
+        assert(extras.peerItems.get(0).status.text === 'This computer' && !extras.peerItems.get(0).item.sensitive,
+            'Control host must be protected');
+        assert(extras.peerItems.get(2).item.label.text === 'Windows PC', 'Windows paired-device row missing');
+        for (const key of ['multipoint','bassBoost','touchLock','lowLatency']) {
+            const before = extension.controller.current.snapshot[key];
+            extras.switches.get(key).toggle();
+            await until(() => extension.controller.current.snapshot[key] === !before, key + ' did not change');
+            await ready(extension);
+            extras.switches.get(key).toggle();
+            await until(() => extension.controller.current.snapshot[key] === before, key + ' did not restore');
+            await ready(extension);
+        }
+        extras.peers.setSubmenuShown(true); await sleep(100);
+        await click(extras.peerItems.get(2).item);
+        await until(() => extension.controller.current.snapshot._connections.peers[2].connected, 'Windows switch failed');
+        await ready(extension);
+        assert(!extension.controller.current.snapshot._connections.peers[1].connected &&
+            extension.controller.current.snapshot._connections.peers[0].connected, 'Switch did not preserve Ubuntu');
+        await click(extras.peerItems.get(1).item);
+        await until(() => extension.controller.current.snapshot._connections.peers[1].connected, 'Phone switch failed');
+        await ready(extension);
+        await click(extras.peerItems.get(1).item);
+        await until(() => !extension.controller.current.snapshot._connections.peers[1].connected, 'Disconnect failed');
+        await ready(extension);
+        await click(extras.peerItems.get(1).item);
+        await until(() => extension.controller.current.snapshot._connections.peers[1].connected, 'Reconnect failed');
+        await ready(extension);
+        extras.peers.setSubmenuShown(false);
+        checks.push('Multipoint, bass boost, touch lock and latency toggles; Windows/phone switching preserves Ubuntu; peer disconnect/reconnect');
+        extras.eq.setSubmenuShown(true); await sleep(150);
+        const eqRow = extras.eqRows[0];
+        const beforeEq = writes();
+        eqRow.slider.emit('drag-begin'); eqRow.slider.value = 0.75;
+        await sleep(450);
+        assert(writes() === beforeEq, 'EQ drag wrote before completion');
+        eqRow.slider.emit('drag-end');
+        await until(() => extension.controller.current.snapshot.eq0 === 30, 'EQ gain write failed');
+        await ready(extension);
+        extras.presetEntry.grab_key_focus(); await sleep(100);
+        extras.presetEntry.text = 'Test profile';
+        await click(extras.savePreset);
+        assert(extension.settings.get_value('equalizer-presets').deep_unpack()['Test profile'][0] === 30, 'EQ preset was not saved');
+        await click(extras.removePreset);
+        assert(!Object.hasOwn(extension.settings.get_value('equalizer-presets').deep_unpack(), 'Test profile'), 'Preset removal failed');
+        await click(extras.undoPreset);
+        assert(extension.settings.get_value('equalizer-presets').deep_unpack()['Test profile'][0] === 30, 'Preset undo failed');
+        await click(extras.flat);
+        await until(() => extension.controller.current.snapshot.eq0 === 0, 'Flat EQ reset failed');
+        await ready(extension);
+        extras.presets.grab_key_focus();
+        extras.presets.setSubmenuShown(true); await sleep(100);
+        await click(extras.presetRows[0]);
+        await until(() => extension.controller.current.snapshot.eq0 === 30, 'Saved EQ preset apply failed');
+        await ready(extension);
+        extras.presets.setSubmenuShown(false);
+        checks.push('Explicit EQ preset save, removal, undo and verified application');
+        extras.eq.setSubmenuShown(false);
+        for (const [key, value] of [['soundMode',2],['sidetone',3],['promptMode',1],['autoPowerOff',1800],['audioPriority',1]]) {
+            const choice = extras.choices.get(key);
+            choice.item.setSubmenuShown(true); await sleep(100);
+            await click(choice.options.get(value));
+            await until(() => extension.controller.current.snapshot[key] === value, key + ' choice failed');
+            await ready(extension); choice.item.setSubmenuShown(false);
+        }
+        checks.push('EQ drag commit and flat reset; speech mode, sidetone, prompts, shutdown timer and audio priority choices');
         const clicked = ui.switches.get('smartPause');
         const clickedBefore = extension.controller.current.snapshot.smartPause;
         await click(clicked);
@@ -148,9 +236,9 @@ async function execute() {
         await until(() => extension.controller.current.snapshot.smartPause === !clickedBefore, 'Pointer click did not toggle switch');
         assert(ui.menu.isOpen, 'Clicking a switch closed the menu');
         await ready(extension);
-        const readsBefore = events().filter(e => e.phase === 'start' && e.args[0] === 'status').length;
+        const readsBefore = events().filter(e => e.phase === 'start' && ['status', 'inspect'].includes(e.args[0])).length;
         await click(ui.refreshItem);
-        await until(() => events().filter(e => e.phase === 'start' && e.args[0] === 'status').length > readsBefore, 'Refresh click did not read');
+        await until(() => events().filter(e => e.phase === 'start' && ['status', 'inspect'].includes(e.args[0])).length > readsBefore, 'Refresh click did not read');
         assert(ui.menu.isOpen, 'Clicking Refresh closed the menu');
         await ready(extension);
         checks.push('Pointer clicks on switches, anti-wind modes and Refresh keep the menu open; switch shows requested value while updating');
@@ -270,8 +358,9 @@ async function execute() {
         const [, prefsBytes] = GLib.file_get_contents(`${output}/prefs-result.json`);
         const prefsReport = JSON.parse(new TextDecoder().decode(prefsBytes));
         assert(prefsReport.passed, `Preferences checks failed: ${prefsReport.error}`);
-        assert(events().length === beforePrefs, 'Preferences started headset commands');
-        checks.push('Packaged GTK4 preferences run separately, path validation, battery binding, zero CLI commands');
+        assert(!events().slice(beforePrefs).some(event => event.ppid === Number(prefsProcess.get_identifier())), 'Preferences directly started headset commands');
+        checks.push('Packaged GTK4 preferences run separately, path and headset address validation, battery binding, no CLI child from Preferences');
+        await ready(extension); ui = extension.indicator;
         ui.menu.open(); await sleep(250);
         // Simulate a short monitor so the settings section must scroll.
         ui.menu.box.set_style('max-height: 360px;'); await sleep(300);

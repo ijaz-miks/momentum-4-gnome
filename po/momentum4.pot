@@ -4,7 +4,7 @@ msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 
-#: prefs.js:13 ui/indicator.js:43 ui/indicator.js:61 ui/indicator.js:62 ui/indicator.js:179
+#: prefs.js:13 ui/indicator.js:44 ui/indicator.js:62 ui/indicator.js:63 ui/indicator.js:192
 msgid "Momentum 4 Controls"
 msgstr ""
 
@@ -49,22 +49,26 @@ msgid "Not applied"
 msgstr ""
 
 #: prefs.js:69
+msgid "Headset Bluetooth address (empty for automatic selection)"
+msgstr ""
+
+#: prefs.js:82
 msgid "Show battery percentage in the top bar"
 msgstr ""
 
-#: prefs.js:69
+#: prefs.js:82
 msgid "Shown only after a valid status read. When off, the headset is not polled while the menu is closed."
 msgstr ""
 
-#: prefs.js:72
+#: prefs.js:85
 msgid "Keyboard"
 msgstr ""
 
-#: prefs.js:74
+#: prefs.js:87
 msgid "Shortcut that opens or closes the menu, for example <Super>m. Leave empty to disable it."
 msgstr ""
 
-#: prefs.js:76
+#: prefs.js:89
 msgid "Shortcut"
 msgstr ""
 
@@ -104,6 +108,50 @@ msgstr ""
 msgid "Battery"
 msgstr ""
 
+#: lib/commands.js:19
+msgid "Multipoint"
+msgstr ""
+
+#: lib/commands.js:20
+msgid "Bass boost"
+msgstr ""
+
+#: lib/commands.js:21
+msgid "Lock touch controls"
+msgstr ""
+
+#: lib/commands.js:22
+msgid "Low latency"
+msgstr ""
+
+#: lib/commands.js:23
+msgid "Sidetone"
+msgstr ""
+
+#: lib/commands.js:24
+msgid "Sound mode"
+msgstr ""
+
+#: lib/commands.js:25
+msgid "Auto power-off"
+msgstr ""
+
+#: lib/commands.js:26
+msgid "Tone and voice prompts"
+msgstr ""
+
+#: lib/commands.js:27
+msgid "Audio mode priority"
+msgstr ""
+
+#: lib/commands.js:28 ui/extraControls.js:228 ui/extraControls.js:230
+msgid "Headset name"
+msgstr ""
+
+#: lib/commands.js:30 ui/extraControls.js:18 ui/extraControls.js:144
+msgid "Equalizer"
+msgstr ""
+
 #: lib/executableResolver.js:14
 msgid "The selected momentumctl executable cannot be started. Use an absolute executable filename."
 msgstr ""
@@ -112,39 +160,47 @@ msgstr ""
 msgid "momentumctl was not found. Select its executable in Preferences."
 msgstr ""
 
-#: lib/headsetController.js:15
+#: lib/headsetController.js:16
 msgid "The headset did not respond in time"
 msgstr ""
 
-#: lib/headsetController.js:16
+#: lib/headsetController.js:17
 msgid "Headset unavailable. Connect it in Bluetooth Settings, then refresh."
 msgstr ""
 
-#: lib/headsetController.js:17
+#: lib/headsetController.js:18
 msgid "Could not communicate with the headset"
 msgstr ""
 
-#: lib/headsetController.js:119
+#: lib/headsetController.js:124
 msgid "Headset disconnected. Connect it in Bluetooth Settings."
 msgstr ""
 
-#: lib/headsetController.js:168 lib/headsetController.js:226
+#: lib/headsetController.js:191
+msgid "Equalizer preset"
+msgstr ""
+
+#: lib/headsetController.js:200
+msgid "Headset connection"
+msgstr ""
+
+#: lib/headsetController.js:223 lib/headsetController.js:285
 msgid "Could not read headset settings"
 msgstr ""
 
-#: lib/headsetController.js:192 lib/headsetController.js:246
+#: lib/headsetController.js:250 lib/headsetController.js:306
 msgid "Could not update %s"
 msgstr ""
 
-#: lib/headsetController.js:195
+#: lib/headsetController.js:253
 msgid "Could not confirm current headset settings"
 msgstr ""
 
-#: lib/headsetController.js:259
+#: lib/headsetController.js:319
 msgid "Update sent; current headset state could not be confirmed"
 msgstr ""
 
-#: lib/headsetController.js:261
+#: lib/headsetController.js:321
 msgid "%s did not change to the requested value"
 msgstr ""
 
@@ -152,107 +208,343 @@ msgstr ""
 msgid "..."
 msgstr ""
 
-#: ui/indicator.js:17
+#: ui/extraControls.js:18 ui/extraControls.js:19 ui/extraControls.js:20 ui/indicator.js:18
 msgid "Off"
 msgstr ""
 
-#: ui/indicator.js:17
-msgid "Auto"
+#: ui/extraControls.js:18
+msgid "Speech / podcast"
 msgstr ""
 
-#: ui/indicator.js:17
-msgid "Max"
+#: ui/extraControls.js:18
+msgid "Sound Personalization"
 msgstr ""
 
-#: ui/indicator.js:63 ui/indicator.js:185 ui/indicator.js:186
-msgid "Checking"
+#: ui/extraControls.js:19
+msgid "Very low"
 msgstr ""
 
-#: ui/indicator.js:74
-msgid "Noise control"
+#: ui/extraControls.js:19
+msgid "Low"
 msgstr ""
 
-#: ui/indicator.js:92 ui/indicator.js:202
-msgid "Anti-wind: Unavailable"
+#: ui/extraControls.js:19
+msgid "Medium"
 msgstr ""
 
-#: ui/indicator.js:101
-msgid "Behaviour"
+#: ui/extraControls.js:19
+msgid "High"
 msgstr ""
 
-#: ui/indicator.js:108
-msgid "Dismiss update error"
+#: ui/extraControls.js:19
+msgid "Very high"
 msgstr ""
 
-#: ui/indicator.js:112
-msgid "Refresh"
+#: ui/extraControls.js:20
+msgid "Tones only"
 msgstr ""
 
-#: ui/indicator.js:115
-msgid "Bluetooth Settings"
+#: ui/extraControls.js:20
+msgid "Tones and voice"
 msgstr ""
 
-#: ui/indicator.js:118
-msgid "Preferences"
+#: ui/extraControls.js:21
+msgid "Advanced sound quality"
 msgstr ""
 
-#: ui/indicator.js:121
-msgid "Could not open Preferences: %s"
+#: ui/extraControls.js:21
+msgid "Bluetooth compatibility"
 msgstr ""
 
-#: ui/indicator.js:156
-msgid "Could not open Bluetooth Settings: %s"
+#: ui/extraControls.js:22
+msgid "Never"
 msgstr ""
 
-#: ui/indicator.js:181
-msgid "%s · Battery %s (stale)"
+#: ui/extraControls.js:22
+msgid "15 minutes"
 msgstr ""
 
-#: ui/indicator.js:182
-msgid "%s · Battery %s"
+#: ui/extraControls.js:22
+msgid "30 minutes"
 msgstr ""
 
-#: ui/indicator.js:185
-msgid "Available"
+#: ui/extraControls.js:22
+msgid "1 hour"
 msgstr ""
 
-#: ui/indicator.js:185 ui/indicator.js:194
+#: ui/extraControls.js:22
+msgid "2 hours"
+msgstr ""
+
+#: ui/extraControls.js:25
+msgid "English"
+msgstr ""
+
+#: ui/extraControls.js:25
+msgid "German"
+msgstr ""
+
+#: ui/extraControls.js:25
+msgid "French"
+msgstr ""
+
+#: ui/extraControls.js:25
+msgid "Spanish"
+msgstr ""
+
+#: ui/extraControls.js:25
+msgid "Chinese"
+msgstr ""
+
+#: ui/extraControls.js:25
+msgid "Japanese"
+msgstr ""
+
+#: ui/extraControls.js:25
+msgid "Russian"
+msgstr ""
+
+#: ui/extraControls.js:25
+msgid "Korean"
+msgstr ""
+
+#: ui/extraControls.js:39
+msgid "Decrease EQ band %s"
+msgstr ""
+
+#: ui/extraControls.js:40
+msgid "Increase EQ band %s"
+msgstr ""
+
+#: ui/extraControls.js:43
+msgid "Equalizer band %s"
+msgstr ""
+
+#: ui/extraControls.js:71
+msgid "Band %s: %s dB"
+msgstr ""
+
+#: ui/extraControls.js:114
+msgid "Connection management"
+msgstr ""
+
+#: ui/extraControls.js:116
+msgid "Paired devices"
+msgstr ""
+
+#: ui/extraControls.js:132 ui/extraControls.js:313
+msgid "Switching keeps this computer connected and replaces the other source."
+msgstr ""
+
+#: ui/extraControls.js:136
+msgid "Connect headset to this computer"
+msgstr ""
+
+#: ui/extraControls.js:141
+msgid "Sound"
+msgstr ""
+
+#: ui/extraControls.js:151
+msgid "Reset EQ to flat"
+msgstr ""
+
+#: ui/extraControls.js:157
+msgid "Saved EQ presets"
+msgstr ""
+
+#: ui/extraControls.js:175
+msgid "Preset name"
+msgstr ""
+
+#: ui/extraControls.js:177
+msgid "Save current EQ preset"
+msgstr ""
+
+#: ui/extraControls.js:194 ui/extraControls.js:346
+msgid "Remove selected preset"
+msgstr ""
+
+#: ui/extraControls.js:205
+msgid "Undo preset removal"
+msgstr ""
+
+#: ui/extraControls.js:225
+msgid "Device settings"
+msgstr ""
+
+#: ui/extraControls.js:233
+msgid "Save headset name"
+msgstr ""
+
+#: ui/extraControls.js:246
+msgid "Device information"
+msgstr ""
+
+#: ui/extraControls.js:293 ui/extraControls.js:318 ui/extraControls.js:363 ui/indicator.js:198 ui/indicator.js:207
 msgid "Unavailable"
 msgstr ""
 
-#: ui/indicator.js:186
+#: ui/extraControls.js:298
+msgid "Connections: %s/%s"
+msgstr ""
+
+#: ui/extraControls.js:299
+msgid "Paired devices: Unavailable"
+msgstr ""
+
+#: ui/extraControls.js:307
+msgid "This computer"
+msgstr ""
+
+#: ui/extraControls.js:307 ui/indicator.js:199
 msgid "Updating"
 msgstr ""
 
-#: ui/indicator.js:187
+#: ui/extraControls.js:307
+msgid "Connected · Disconnect"
+msgstr ""
+
+#: ui/extraControls.js:308
+msgid "Enable multipoint first"
+msgstr ""
+
+#: ui/extraControls.js:308
+msgid "Switch to"
+msgstr ""
+
+#: ui/extraControls.js:312
+msgid "Enable multipoint to connect a second source."
+msgstr ""
+
+#: ui/extraControls.js:319
+msgid "%s: %s"
+msgstr ""
+
+#: ui/extraControls.js:346
+msgid "Remove preset: %s"
+msgstr ""
+
+#: ui/extraControls.js:350
+msgid "Sound Personalization profile is available."
+msgstr ""
+
+#: ui/extraControls.js:351
+msgid "Sound Personalization requires a calibrated profile from Smart Control Plus."
+msgstr ""
+
+#: ui/extraControls.js:360
+msgid "No audio stream"
+msgstr ""
+
+#: ui/extraControls.js:360
+msgid "Unknown codec %s"
+msgstr ""
+
+#: ui/extraControls.js:362
+msgid "Firmware: %s"
+msgstr ""
+
+#: ui/extraControls.js:363
+msgid "Codec: %s"
+msgstr ""
+
+#: ui/extraControls.js:363
+msgid "Voice prompt language: %s"
+msgstr ""
+
+#: ui/extraControls.js:364
+msgid "Bluetooth address: %s"
+msgstr ""
+
+#: ui/indicator.js:18
+msgid "Auto"
+msgstr ""
+
+#: ui/indicator.js:18
+msgid "Max"
+msgstr ""
+
+#: ui/indicator.js:64 ui/indicator.js:198 ui/indicator.js:199
+msgid "Checking"
+msgstr ""
+
+#: ui/indicator.js:75
+msgid "Noise control"
+msgstr ""
+
+#: ui/indicator.js:93 ui/indicator.js:216
+msgid "Anti-wind: Unavailable"
+msgstr ""
+
+#: ui/indicator.js:102
+msgid "Behaviour"
+msgstr ""
+
+#: ui/indicator.js:113
+msgid "Dismiss update error"
+msgstr ""
+
+#: ui/indicator.js:117
+msgid "Refresh"
+msgstr ""
+
+#: ui/indicator.js:120
+msgid "Bluetooth Settings"
+msgstr ""
+
+#: ui/indicator.js:123
+msgid "Preferences"
+msgstr ""
+
+#: ui/indicator.js:126
+msgid "Could not open Preferences: %s"
+msgstr ""
+
+#: ui/indicator.js:169
+msgid "Could not open Bluetooth Settings: %s"
+msgstr ""
+
+#: ui/indicator.js:194
+msgid "%s · Battery %s (stale)"
+msgstr ""
+
+#: ui/indicator.js:195
+msgid "%s · Battery %s"
+msgstr ""
+
+#: ui/indicator.js:198
+msgid "Available"
+msgstr ""
+
+#: ui/indicator.js:200
 msgid "Error"
 msgstr ""
 
-#: ui/indicator.js:188
+#: ui/indicator.js:201
 msgid "%s · Battery low"
 msgstr ""
 
-#: ui/indicator.js:189
+#: ui/indicator.js:202
 msgid "%s, %s"
 msgstr ""
 
-#: ui/indicator.js:190
+#: ui/indicator.js:203
 msgid "%s, %s, battery %s percent, low"
 msgstr ""
 
-#: ui/indicator.js:191
+#: ui/indicator.js:204
 msgid "%s, %s, battery %s percent"
 msgstr ""
 
-#: ui/indicator.js:203
+#: ui/indicator.js:217
 msgid "Anti-wind: %s (updating)"
 msgstr ""
 
-#: ui/indicator.js:204
+#: ui/indicator.js:218
 msgid "Anti-wind: %s"
 msgstr ""
 
-#: ui/indicator.js:216
+#: ui/indicator.js:230
 msgid "Displayed values are stale. Refresh to confirm current settings."
 msgstr ""
 

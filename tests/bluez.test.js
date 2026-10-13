@@ -7,6 +7,7 @@ import {assert, equal} from './assert.js';
 // (check.sh starts it with dbus-run-session). Never touches real Bluetooth.
 const NAME = 'org.bluez.MomentumTest';
 const XML = `<node><interface name="org.bluez.Device1">
+  <property name="Address" type="s" access="read"/>
   <property name="Connected" type="b" access="read"/>
   <property name="UUIDs" type="as" access="read"/>
 </interface></node>`;
@@ -15,6 +16,7 @@ const sleep = ms => new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAUL
 function device(server, path, uuids, connected) {
     const state = {connected};
     const iface = Gio.DBusExportedObject.wrapJSObject(XML, {
+        get Address() { return path.split('dev_')[1].replaceAll('_', ':'); },
         get Connected() { return state.connected; },
         get UUIDs() { return uuids; },
     });
@@ -47,10 +49,14 @@ export async function run() {
     equal(seen, ['disconnected'], 'A connected non-GAIA device is not the headset');
     headset.setConnected(true); await sleep(200);
     equal(seen, ['disconnected', 'connected']);
+    watcher.setAddress('00:00:00:00:00:02'); await sleep(100);
+    equal(seen.at(-1), 'disconnected', 'Selected address must not follow another headset');
+    watcher.setAddress('00:00:00:00:00:01'); await sleep(100);
+    equal(seen.at(-1), 'connected', 'Selected headset must be observed');
     headset.setConnected(false); await sleep(200);
     headset.setConnected(true); await sleep(200);
     server.unexport(headset.path); await sleep(200);
-    equal(seen, ['disconnected', 'connected', 'disconnected', 'connected', 'disconnected']);
+    equal(seen, ['disconnected', 'connected', 'disconnected', 'connected', 'disconnected', 'connected', 'disconnected']);
     Gio.bus_unown_name(owner); await sleep(300);
     equal(seen.at(-1), 'unknown', 'Losing BlueZ is reported as unknown');
     watcher.stop();

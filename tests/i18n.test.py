@@ -11,7 +11,7 @@ sys.path.insert(0, str(root / 'scripts'))
 import i18n
 
 # Every _() call must be extractable: a literal, or a value marked with N_().
-allowed = re.compile(r"_\((\s*'|FIELDS\[[^\]]+\]\.title\)|MODE_LABELS\[[^\]]+\]\))")
+allowed = re.compile(r"_\((\s*'|(?:FIELDS|EXTRA_FIELDS)\[[^\]]+\]\.title\)|(?:label|language)\)|MODE_LABELS\[[^\]]+\]\))")
 for entry in i18n.SOURCES:
     path = root / entry
     for source in (sorted(path.rglob('*.js')) if path.is_dir() else [path]):

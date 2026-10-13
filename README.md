@@ -1,185 +1,202 @@
 # Momentum 4 Controls
 
-A GNOME Shell top-bar menu for Sennheiser Momentum 4 headphones, built on the
-[momentumctl](https://codeberg.org/galen/momentumctl) command-line tool. It is a
-native GNOME counterpart of the Omarchy
-[omarchy-momentumctl](https://github.com/timmo001/omarchy-momentumctl) panel.
+Native GNOME Shell controls for Sennheiser Momentum 4, using this checkout's
+bundled momentumctl 0.2.0 CLI. UUID: momentum4@ijaz-miks.github.io.
+Supported GNOME Shell: 50.
 
-UUID: `momentum4@ijaz-miks.github.io`. Supported GNOME Shell: 50.
+Custom widgets use explicit Momentum 4 GType names because all extensions
+share one Shell process. This avoids collisions with other extensions that
+also define ui/indicator.js and a class named Indicator.
 
 ## Features
 
-- Battery percentage in the top bar and menu.
-- Noise cancellation, adaptive noise control, transparency (slider and
-  10-point step buttons), anti-wind Off/Auto/Max.
+- Battery percentage, noise cancellation, adaptive noise control, transparency
+  slider and step buttons, and anti-wind Off/Auto/Max.
 - Smart Pause, on-head detection, auto-answer and Comfort Call.
-- Refresh, Bluetooth Settings and Preferences.
+- Multipoint on/off with control-channel recovery.
+- Paired source-device list, confirmed status and switching between Windows,
+  a phone or another source while preserving this Ubuntu computer's connection.
+- Five-band EQ, bass boost, speech/podcast mode and explicitly saved presets
+  with removal undo.
+- Sidetone, auto power-off, tone/voice prompts, audio priority, touch lock and
+  low latency, gated by firmware support.
+- Headset rename, firmware/codec/voice-language information and headset selection.
+- Reconnect, Refresh, Bluetooth Settings and GTK4/libadwaita Preferences.
 
-Headset values are read from the device and never persisted or automatically
-replayed. Unknown values display Unavailable. After a failed read, retained
-values are marked stale and the controls are disabled until a valid read.
+Values come from the headset. Failed reads mark retained values stale and
+disable controls. Presets are saved only by explicit request and applied only
+when selected. Restarting or opening the menu never replays headset settings.
 
-The menu uses native GNOME Shell widgets, the active theme and normal keyboard
-navigation: Up/Down to move, Enter/Space to activate, Left/Right on the slider
-and Escape to close. It scrolls when it does not fit on the monitor. An
-optional keyboard shortcut, set in Preferences, opens and closes the menu.
+## Device switching
+
+Pair Windows with the headset once in Windows Bluetooth Settings. It then
+appears automatically in the headset's paired list.
+
+Open Connection management, then Paired devices, and select Windows. The CLI
+keeps Ubuntu connected and replaces the other source when both slots are full.
+Select an already connected non-host source to disconnect it. Enable multipoint
+to connect a second source. The row for this computer is protected.
+
+The target index and exact name are reread before changing a connection.
+Acknowledgement is followed by status polling; a connection can take several
+seconds to establish. If connecting the target fails, the previous source is
+restored where possible and the failure remains visible.
+
+Multipoint off can close Ubuntu's Bluetooth control connection. The CLI
+reconnects through BlueZ, reopens RFCOMM and reads back the state. An uncertain
+setter is never blindly repeated. Use Connect headset to this computer when
+the headset is disconnected.
+
+These controls manage connections. They do not start or pause audio players
+on other computers.
+
+## Supported headset functions
+
+The extension validates a complete schema-versioned snapshot from
+momentumctl inspect --json. Optional unsupported controls display Unavailable.
+
+Sound Personalization can activate an existing calibrated profile. Creating a
+new calibrated profile, location-based Sound Zones, voice-pack installation
+and firmware updates remain phone-app functions. Firmware, codec and current
+voice language are information fields in this menu.
 
 ## Requirements
 
-- GNOME Shell 50 (GJS ES modules). Preferences use GTK4 and libadwaita.
-- An installed `momentumctl` executable, with the headset paired in BlueZ.
+- GNOME Shell 50 with GJS ES modules.
+- The bundled momentumctl 0.2.0, with the Momentum 4 paired in BlueZ.
+  The original upstream CLI does not provide inspect or multipoint.
+- GTK4/libadwaita for Preferences.
 
-Preferences accept an absolute executable filename, including names with
-spaces. An explicit invalid path never falls back to another program. When the
-setting is empty, the extension searches PATH, then `~/.cargo/bin`,
-`~/.local/bin`, `/usr/local/bin` and `/usr/bin`. GNOME Shell's PATH usually does
-not include `~/.cargo/bin`, so the explicit fallback matters for Cargo installs.
+An empty CLI path searches PATH, ~/.cargo/bin, ~/.local/bin, /usr/local/bin
+and /usr/bin. An explicit invalid executable never falls back. Preferences
+also accept an optional headset Bluetooth address; ambiguous automatic headset
+selection is rejected. Source computers are selected from the headset's list.
 
-Only `momentumctl status` and the eight documented setters are used. There is no
-device picker, firmware operation, factory reset or profile restoration, and no
-second Bluetooth protocol implementation.
+## Build, test and install
 
-## Build and install
+The complete backend source is in momentumctl/. Build both components from
+this repository. The original Codeberg CLI does not include these controls.
+Use Rust 1.89 or newer. On Ubuntu, install the build and runtime dependencies:
 
-```bash
-bash scripts/check.sh
-python3 scripts/package.py --output-dir builds/<new-build-name>
-python3 scripts/install-local.py builds/<new-build-name>/momentum4@ijaz-miks.github.io.shell-extension.zip
-```
+    sudo apt install pkg-config libdbus-1-dev python3 libglib2.0-bin gjs gir1.2-adw-1
 
-Then log out and back in so GNOME Shell discovers the extension (Wayland
-sessions cannot restart Shell in place), and run:
+Then, from the repository root:
 
-```bash
-gnome-extensions enable momentum4@ijaz-miks.github.io
-gnome-extensions info momentum4@ijaz-miks.github.io
-gnome-extensions prefs momentum4@ijaz-miks.github.io
-```
+    cargo build --release --locked --manifest-path momentumctl/Cargo.toml
+    cargo test --locked --manifest-path momentumctl/Cargo.toml
+    cargo clippy --locked --manifest-path momentumctl/Cargo.toml -- -D warnings
+    python3 scripts/install-cli.py momentumctl/target/release/momentumctl
 
-Disable immediately with `gnome-extensions disable momentum4@ijaz-miks.github.io`.
+The CLI installer writes to ~/.cargo/bin/momentumctl and refuses to overwrite
+an existing file or symbolic link. For an existing CLI installation, first
+disable the extension and preserve the old binary in desktop Trash:
 
-`package.py` refuses an existing output directory and keeps its staging files.
-`install-local.py` validates the exact production file set and UUID, rejects
-traversal, absolute paths, symlinks, duplicate entries and oversized files,
-refuses an existing destination, and installs without enabling.
+    gnome-extensions disable momentum4@ijaz-miks.github.io
+    python3 scripts/trash-installed.py --cli --reason 'Update momentumctl' --log "$HOME/momentumctl-removal-log.tsv"
+    python3 scripts/install-cli.py momentumctl/target/release/momentumctl
 
-## Updating an installed copy
+Build and install the extension:
 
-The installer never overwrites. Disable the extension, move the installed
-directory aside, then install the new bundle. `scripts/trash-installed.py` moves
-the exact installed directory to the desktop Trash (never permanent deletion),
-verifies the Trash entry and its recovery metadata, appends records to the
-given TSV log and prints the restore command:
+    bash scripts/check.sh
+    python3 scripts/package.py --output-dir builds/<fresh-build-name>
+    python3 scripts/install-local.py builds/<fresh-build-name>/momentum4@ijaz-miks.github.io.shell-extension.zip
 
-```bash
-gnome-extensions disable momentum4@ijaz-miks.github.io
-python3 scripts/trash-installed.py --reason 'Update Momentum 4 Controls' --log "$HOME/.local/state/removal-log.tsv"
-python3 scripts/install-local.py builds/<new-build-name>/momentum4@ijaz-miks.github.io.shell-extension.zip
-```
+Output directories must be new. Staging and test output are retained.
+The installer validates the exact production file set, rejects unsafe archive
+entries and refuses an existing destination.
 
-Roll back by moving the new copy to Trash the same way and running the printed
-`gio trash --restore` command for the previous copy. Log out and back in to
-reload the code.
+For an update, disable the extension, preserve its installed directory in
+desktop Trash with the verified workflow, then install the validated bundle:
 
-## How it works
+    gnome-extensions disable momentum4@ijaz-miks.github.io
+    python3 scripts/trash-installed.py --reason 'Update Momentum 4 Controls' --log "$HOME/momentumctl-removal-log.tsv"
+    python3 scripts/install-local.py builds/<fresh-build-name>/momentum4@ijaz-miks.github.io.shell-extension.zip
 
-Every CLI invocation is asynchronous, uses an argv array (never a shell), runs
-with `LC_ALL=C`, has a 10-second deadline and captures separate UTF-8 streams
-capped at 64 KiB each. Timeout and cancellation terminate the child and wait for
-it to exit before another command can start. Disable, immediate re-enable and
-path changes share the same barrier, so at most one child of this extension
-exists at a time.
+The Trash helper verifies the original path, mount, owner, new Trash entry and
+recovery metadata and prints the exact recovery command. Never empty Trash.
 
-Each change is one transaction: setter, 500 ms settling delay, then a full
-`status` read. Status must contain all nine fields exactly once with strict
-booleans, modes and percentages, and the snapshot is replaced atomically.
-Malformed output is never defaulted or clamped. Setter errors stay visible after
-later successful reads. An uncertain setter is never retried; one read reconciles
-the observed state. If the headset reports a different value than requested,
-the actual value is shown with an error.
+GNOME caches imported extension modules. Log out and back in to load this
+version, then enable it:
 
-Transparency keeps a separate preview. Pointer drags commit at drag end;
-keyboard, wheel and step changes debounce for 350 ms; closing the menu commits a
-pending preview.
+    gnome-extensions enable momentum4@ijaz-miks.github.io
 
-Polling runs after completed transactions: every 30 seconds with the menu open
-and every 120 seconds while closed. Closed-menu polling only keeps the panel
-battery text current, so it is off when that text is hidden in Preferences. Read failures back off to 30, 60, 120 and 300
-seconds. A missing CLI does not poll. Opening the menu and Refresh bypass the
-backoff. logind sleep signals cancel work and waking rereads.
+The running desktop is not signed out automatically during installation.
 
-The extension also watches BlueZ on the system bus, read-only, for a connected
-device that offers the GAIA profile `momentumctl` uses. When the headset
-connects, it reads shortly afterwards instead of waiting for the backoff; while
-BlueZ reports it disconnected, values are marked unavailable and no commands
-run until it reconnects. Watching never starts `bluetoothd` and never calls
-BlueZ methods. Without BlueZ on the bus, the polling above applies unchanged.
+## Runtime behavior
 
-Serialization covers this extension only. Another program using `momentumctl`
-at the same time can still contend for the headset's Bluetooth profile. A
-successful status means the control interface answered; it is not a Bluetooth
-connection indicator, and the product name is not a device identity.
+Every CLI invocation is asynchronous, uses argv without a shell, runs with
+LC_ALL=C and limits each output stream to 64 KiB. Deadlines allow 30 seconds
+for snapshots, 60 seconds for multipoint/audio priority and 75 seconds for
+switching or complete EQ profiles. Cancellation terminates and reaps the
+child before another operation starts.
 
-## Development
+The controller serializes writes, settles, reads the complete snapshot and
+verifies the requested value. Malformed output never defaults to off or zero.
+Errors remain visible until dismissed. The CLI's user-scoped OS lock also
+serializes terminal invocations with extension operations.
 
-```bash
-bash scripts/check.sh
-python3 scripts/package.py --output-dir builds/<build>
-python3 tests/package.test.py builds/<build>/momentum4@ijaz-miks.github.io.shell-extension.zip
-gjs -m tests/package-runtime.js builds/<build>/staging
-python3 scripts/shell-test-retained.py builds/<build>/momentum4@ijaz-miks.github.io.shell-extension.zip --output-dir builds/<shell-test>
-```
+Transparency and EQ drags commit at drag end; keyboard/wheel/step inputs
+debounce. Closing the menu commits accepted previews. EQ profiles validate
+band count and device limits, activate EQ, verify all gains and restore the
+previous EQ/mode on failure.
 
-Use fresh directory names each time; build and test output is retained and
-ignored by Git. `check.sh` runs the parser, command, controller and real
-subprocess tests against `tests/mock-momentumctl.py`, plus schema and static
-checks. The BlueZ watcher test runs against a fake `org.bluez` service on a
-private bus. The Shell test starts the packaged extension in a private headless
-GNOME Shell with its own XDG directories, D-Bus session (also used as its system
-bus, with a fake BlueZ) and Wayland display, and
-selects the mock CLI explicitly so it cannot reach a real headset. It does not
-use the installed `gnome-shell-test-tool`, which removes its output.
+Polling follows completed transactions: 30 seconds with the menu open,
+120 seconds while closed when battery text is enabled, with failure backoff.
+A read-only BlueZ observer follows the selected headset, suppresses offline
+polling and reads after reconnection. logind sleep cancels pending work.
 
-`tests/hardware-read.js` performs one read-only `status` call against a real
-headset and is excluded from the bundle and from automated checks:
+The menu uses native widgets, the active theme, keyboard navigation and
+scrolling. Preferences never open a headset connection.
 
-```bash
-gjs -m tests/hardware-read.js [path-to-momentumctl]
-```
+## Development validation
 
-Manual acceptance steps are in `docs/manual-test-plan.md`.
+The extended controls are experimental. Multipoint wire commands, paired-peer
+disconnect/reconnect commands and additional reads were checked on Momentum 4 firmware
+3.38.3. Automated Rust tests and the isolated GNOME suite validate framing,
+rollback, UI and lifecycle behavior with simulated headset responses. Complete
+physical acceptance of the rebuilt CLI and the new EQ/device setters remains
+pending. Run the manual headset checks before relying on every control.
+
+    python3 tests/package.test.py builds/<build>/momentum4@ijaz-miks.github.io.shell-extension.zip
+    gjs -m tests/package-runtime.js builds/<build>/staging
+    python3 scripts/shell-test-retained.py builds/<build>/momentum4@ijaz-miks.github.io.shell-extension.zip --output-dir builds/<fresh-shell-test>
+
+The Shell harness runs a private headless compositor, its own XDG directories
+and D-Bus session, and a fake headset CLI. It never reaches the host's BlueZ.
+A retained wrapper gives GNOME's real performance helper enough time for the
+expanded suite. The harness checks switches, Windows/phone switching, EQ and
+presets, additional settings, lifecycle, errors, scrolling and Preferences.
+
+Read-only physical verification:
+
+    gjs -m tests/hardware-read.js [path-to-momentumctl]
+    momentumctl inspect --json
+
+See docs/manual-test-plan.md for physical acceptance checks.
 
 ## Translations
 
-User-facing strings are marked with `_('...')` (or `N_('...')` for values
-translated where they are shown) and use the `momentum4` gettext domain.
-Status labels parsed from `momentumctl` stay in English.
+Strings use the momentum4 gettext domain and literal translation markers.
 
-```bash
-python3 scripts/i18n.py pot      # refresh po/momentum4.pot after changing strings
-cp po/momentum4.pot po/de.po     # start a translation, then fill in msgstr values
-```
+    python3 scripts/i18n.py pot
 
-`scripts/check.sh` fails when the template is missing a marked string.
-`package.py` compiles every `po/<language>.po` into
-`locale/<language>/LC_MESSAGES/momentum4.mo` inside the bundle. The tooling uses
-only the Python standard library; GNU gettext is not required.
+Packaging compiles available PO catalogs. The tooling uses Python's standard
+library and retains build files.
 
 ## Layout
 
 | Path | Responsibility |
 | --- | --- |
-| `lib/commands.js`, `lib/statusParser.js` | CLI contract and strict status parsing |
-| `lib/executableResolver.js` | Executable discovery |
-| `lib/cliExecutor.js` | One owned child process with deadline and cancellation |
-| `lib/headsetController.js` | Transactions, state, timers and intent (no Shell imports, unit tested) |
-| `ui/` | Panel indicator and menu widgets |
-| `extension.js` | Settings, lifecycle and system signal subscriptions |
-| `lib/bluezWatcher.js` | Read-only BlueZ connection observer |
-| `lib/i18n.js`, `po/`, `scripts/i18n.py` | Translation hooks, template and tooling |
-| `prefs.js` | GTK4 preferences; never talks to the headset |
+| momentumctl/ | Extended MIT-licensed Rust backend, build and protocol tests |
+| lib/commands.js, lib/statusParser.js, lib/inspectionParser.js | CLI contract and strict snapshots |
+| lib/headsetController.js | Serialized intent, verification, timers and lifecycle |
+| lib/cliExecutor.js | Owned child process, deadlines and cancellation |
+| lib/bluezWatcher.js | Read-only selected-headset observation |
+| ui/ | Native connection, sound, EQ/preset, behavior and device controls |
+| prefs.js | GTK4/libadwaita preferences |
+| scripts/ | Retained packaging, installation, translations and Shell tests |
 
 ## License
 
-MIT. See `LICENSE` and `NOTICE`. Sennheiser and Momentum are trademarks of their
-respective owners; this project is not affiliated with Sennheiser.
+MIT. See LICENSE and NOTICE. Sennheiser and Momentum are trademarks of their
+owners. This project is not affiliated with Sennheiser.
