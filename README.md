@@ -4,7 +4,7 @@ Native desktop controls for Sennheiser Momentum 4.
 
 | Desktop | Implementation | Setup |
 | --- | --- | --- |
-| Ubuntu / GNOME Shell 50 | GNOME extension with the bundled momentumctl 0.2.0 CLI | Instructions below |
+| Ubuntu / GNOME Shell 50 | GNOME extension with the bundled momentumctl 0.2.1 CLI | Instructions below |
 | macOS 14 and newer | Native SwiftUI/AppKit menu bar app with direct Bluetooth control | [macOS setup](macos/README.md) |
 
 The GNOME extension UUID is momentum4@ijaz-miks.github.io.
@@ -76,7 +76,7 @@ voice language are information fields in this menu.
 ## Requirements
 
 - GNOME Shell 50 with GJS ES modules.
-- The bundled momentumctl 0.2.0, with the Momentum 4 paired in BlueZ.
+- The bundled momentumctl 0.2.1, with the Momentum 4 paired in BlueZ.
   The original upstream CLI does not provide inspect or multipoint.
 - GTK4/libadwaita for Preferences.
 
@@ -169,11 +169,14 @@ scrolling. Preferences never open a headset connection.
 ## Development validation
 
 The extended controls are experimental. Multipoint wire commands, paired-peer
-disconnect/reconnect commands and additional reads were checked on Momentum 4 firmware
-3.38.3. Automated Rust tests and the isolated GNOME suite validate framing,
-rollback, UI and lifecycle behavior with simulated headset responses. Complete
-physical acceptance of the rebuilt CLI and the new EQ/device setters remains
-pending. Run the manual headset checks before relying on every control.
+disconnect/reconnect commands and additional reads were checked on Momentum 4
+firmware 3.38.3. The 0.2.1 CLI passed five consecutive complete physical snapshots.
+The GNOME controller also changed and restored ANC and confirmed reconnect while
+retaining both the phone and Ubuntu connections. Automated Rust tests and the
+isolated GNOME suite validate framing, rollback, UI and lifecycle behavior with
+simulated headset responses. Complete physical acceptance of every EQ/device
+setter and switching to a real Windows computer remains pending. Run the manual
+headset checks before relying on every control.
 
     python3 tests/package.test.py builds/<build>/momentum4@ijaz-miks.github.io.shell-extension.zip
     gjs -m tests/package-runtime.js builds/<build>/staging
