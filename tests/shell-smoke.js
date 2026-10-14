@@ -123,6 +123,10 @@ async function execute() {
             'Panel widget must use a globally unique GType name');
         checks.push('Extension starts alongside conflicting widget names from other extensions');
         let ui = extension.indicator;
+        const panelIcon = ui.get_children().find(actor => actor.has_style_class_name('panel-status-menu-box')).get_first_child();
+        assert(panelIcon.get_theme_node().get_length('icon-size') === 16 * St.ThemeContext.get_for_stage(global.stage).scale_factor,
+            'Panel headphone glyph must match the other 16px tray icons');
+        checks.push('Panel icon uses the same native 16px sizing as the other control extensions');
         ui.menu.open(); await sleep(250);
         assert(ui.switches.size === 6 && ui.modes.size === 3 && ui.battery.text === '82%', 'Missing controls or battery');
         assert(ui.header._icon.icon_name === 'battery-level-80-symbolic', 'Battery level icon not shown');
@@ -134,6 +138,7 @@ async function execute() {
         const start = writes();
         const changed = {...original.snapshot, transparency: 67};
         for (const key of ui.switches.keys()) changed[key] = !changed[key];
+        for (const key of ui.extras.switches.keys()) changed[key] = !changed[key];
         ui.render({...original, snapshot: Object.freeze(changed)});
         ui.render(original); await sleep(450);
         assert(writes() === start, 'Rendering fired a setter');
