@@ -44,6 +44,12 @@ keeps Ubuntu connected and replaces the other source when both slots are full.
 Select an already connected non-host source to disconnect it. Enable multipoint
 to connect a second source. The row for this computer is protected.
 
+The headset supports two active sources. If two other sources are already
+connected, free one slot before connecting this computer to keep the phone
+connected. The headset must be powered on. Its auto power-off timer can end
+an idle connection independently of the extension; change the timer explicitly
+under Device settings if needed.
+
 The target index and exact name are reread before changing a connection.
 Acknowledgement is followed by status polling; a connection can take several
 seconds to establish. If connecting the target fails, the previous source is
@@ -141,6 +147,11 @@ The controller serializes writes, settles, reads the complete snapshot and
 verifies the requested value. Malformed output never defaults to off or zero.
 Errors remain visible until dismissed. The CLI's user-scoped OS lock also
 serializes terminal invocations with extension operations.
+
+The CLI waits for the kernel's RFCOMM connected state before sending its first
+request. A peer address alone does not prove readiness. If the previous control
+channel is still disconnecting, opening the next one waits within the connection
+deadline. These connection retries never replay a headset-setting command.
 
 Transparency and EQ drags commit at drag end; keyboard/wheel/step inputs
 debounce. Closing the menu commits accepted previews. EQ profiles validate
